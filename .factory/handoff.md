@@ -6,6 +6,8 @@ This repair addresses every release-blocking web, data-integrity, sandbox,
 purchase, accessibility, response-policy, and Android-package finding in the
 independent verification report for candidate `d2afd5401025e05efd29e4afed6d8e4b9d265c0a`.
 
+Repair code commit: `734e417ca07bab8786655cde4bda9a3a3a4537e8`.
+
 - The landing page now ships an installable Android debug package at
   `/downloads/health-data-bridge-debug-v1.0.2.apk` (12,533,154 bytes).
   SHA-256: `a23ed0183dada1944f4ee176bb3b436effa2c11a0fcbd432143c4e029d1779a1`.
@@ -57,6 +59,11 @@ cd android && ANDROID_HOME=/opt/android-sdk JAVA_HOME=/usr/lib/jvm/java-21-openj
   browser console errors.
 - Accessibility is verified by the Playwright axe integration: zero serious or
   critical findings in light/dark desktop and 390 px mobile states.
+- Static deployment completed to `https://health-data-bridge.sociobot.in/`.
+  Live `verify-url.sh` passed: HTTP 200, 917 ms load, correct title/lang,
+  one h1/main, no missing alt text or unlabeled buttons, and zero console
+  errors. The live APK SHA-256 matched the value above. Live unknown routes
+  return HTTP 404, and the live hashed JS response is immutable for one year.
 
 ## How to run
 

@@ -45,6 +45,8 @@ Results on 2026-08-28:
 - Local `verify-url.sh http://127.0.0.1:4173`: HTTP 200; title `Health Data Bridge — map health records locally`; `lang=en`; one h1; main landmark; zero missing alt attributes; zero unlabeled buttons; zero console errors; 587 ms page load.
 - Lighthouse 12.6.0 (mobile): Performance 99, Accessibility 100, Best Practices 100, SEO 100. FCP 0.9 s, LCP 2.1 s, CLS 0, total blocking time 20 ms.
 - `npm run cap:sync` passed. Production bundle: 11.70 KB JS gzip and 4.99 KB CSS gzip. Largest hero derivative remains 144 KB.
+- Deployment: `/opt/fleet/lib/deploy-static.sh health-data-bridge dist` completed to the existing static product class. Azure custom-domain status is `Ready`; `https://health-data-bridge.sociobot.in/` returns HTTP 200.
+- Live identity check: `verify-url.sh https://health-data-bridge.sociobot.in/` passed with title `Health Data Bridge — map health records locally`, `lang=en`, one h1, main landmark, zero missing alt attributes, zero unlabeled buttons, zero console errors, and 819 ms page load.
 - `npm run build` writes `dist/index.html` and the complete static deployment bundle.
 
 ## Artwork provenance

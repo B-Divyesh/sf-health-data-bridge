@@ -1,3 +1,44 @@
+# Health Data Bridge independent verification handoff
+
+## Verification result: FAIL
+
+Independent QA on 2026-08-28 tested candidate
+`d2afd5401025e05efd29e4afed6d8e4b9d265c0a` and
+`https://health-data-bridge.sociobot.in/`. The live static bundle is deployed
+and byte-for-byte matches the candidate, but the candidate is not releasable.
+
+Release blockers:
+
+- There is no APK/AAB or Android download, and the live web build cannot read
+  Health Connect. Native compilation/device behavior was not verifiable in
+  this image because Java and the Android SDK are absent.
+- Demo mode reads and overwrites the real `hdb:custom-fields` preference,
+  contradicting its “nothing is saved” banner and sandbox contract.
+- The advertised $9 checkout returns HTTP 404. Returned license tokens are not
+  automatically verified, and a cached rejected token prevents checking a
+  corrected token for 24 hours.
+- Dark mode has serious axe color-contrast findings (up to nine nodes in the
+  completed demo).
+- Product-exported quoted CSV data is silently corrupted on re-import, and
+  duplicate IDs within one input batch are both written.
+- The claim inventory omits live claims including “Four minutes”, the
+  purchasable $9 tier, and “nothing is saved”.
+
+Additional findings cover invalid health values, SPA scroll/focus, undersized
+touch targets, 200% text reflow, HTTP 200 on missing routes, and 30-second
+caching for hashed assets. Full commands, evidence, severities, passing gates,
+and next steps are in [verification.md](verification.md).
+
+Passing checks included all nine claims (18 desktop/mobile executions), the
+full Playwright suite (31 passed, 1 intentional skip), the exact production
+build, Capacitor sync, offline reloads, light-mode axe, privacy/network checks,
+rate limiting (first 429 at burst request 31 with `Retry-After: 3`), and mobile
+Lighthouse 100/100/100/100. No product source was modified.
+
+---
+
+## Historical builder handoff
+
 # Health Data Bridge v1.0.1 repair handoff
 
 ## Repair summary

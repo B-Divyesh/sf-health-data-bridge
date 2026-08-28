@@ -1,4 +1,10 @@
-# Health Data Bridge v1 handoff
+# Health Data Bridge v1.0.1 repair handoff
+
+## Repair summary
+
+- Repaired the `@claim:encrypted-storage` test race. The app already awaited AES-GCM encryption and IndexedDB writes; the test read `encrypted/receipts` immediately after clicking an async import button, before its persistence promise was guaranteed to settle.
+- The claim now waits for the user-visible save confirmation and polls IndexedDB until a non-empty ciphertext record exists. It asserts a 12-byte IV, non-empty ciphertext, absence of `private-record-7` plaintext, and successful encrypted-ledger rehydration after a full reload in both desktop Chromium and Pixel 5.
+- Added a keyboard regression: the existing skip link now focuses `#main` on every route, and Enter activates the import preview. This passes in both browser projects.
 
 ## What was built
 
@@ -24,6 +30,7 @@ Demo route: `http://localhost:5173/demo`.
 ## How to verify
 
 ```sh
+npm ci
 npm test
 npm run build
 npm run cap:sync
@@ -31,13 +38,13 @@ npm run cap:sync
 
 Results on 2026-08-28:
 
-- Playwright: 29 passed across desktop Chromium and Pixel 5 emulation; one intentional desktop skip for the mobile-only overflow case.
-- All nine entries in `.factory/claims.json` passed in both configured browser projects where applicable.
-- Automated accessibility scan: no serious or critical findings.
-- `verify-url.sh`: HTTP 200, title and language present, one h1, main landmark present, zero missing alt attributes, zero unlabeled buttons, and zero console errors.
-- Lighthouse mobile: Performance 99, Accessibility 100, Best Practices 100, SEO 100.
-- Lighthouse metrics: FCP 0.9 s, LCP 2.1 s, CLS 0, total blocking time 0 ms.
-- Production bundle: 11.69 KB JS gzip and 4.99 KB CSS gzip. Largest hero derivative is 144 KB.
+- Exact clean build: `npm ci && npm run build` passed; `dist/index.html` was produced.
+- Playwright: 31 passed across desktop Chromium and Pixel 5 emulation; one intentional desktop skip for the mobile-only overflow case. All nine claim IDs passed in both projects (18 claim executions), including offline reload, local-only network interception, encryption, and narrow Android permissions.
+- Keyboard: skip link → main focus and Enter activation of Preview passed in desktop and mobile.
+- Automated axe scan (Playwright integration): no serious or critical findings in desktop or mobile.
+- Local `verify-url.sh http://127.0.0.1:4173`: HTTP 200; title `Health Data Bridge — map health records locally`; `lang=en`; one h1; main landmark; zero missing alt attributes; zero unlabeled buttons; zero console errors; 587 ms page load.
+- Lighthouse 12.6.0 (mobile): Performance 99, Accessibility 100, Best Practices 100, SEO 100. FCP 0.9 s, LCP 2.1 s, CLS 0, total blocking time 20 ms.
+- `npm run cap:sync` passed. Production bundle: 11.70 KB JS gzip and 4.99 KB CSS gzip. Largest hero derivative remains 144 KB.
 - `npm run build` writes `dist/index.html` and the complete static deployment bundle.
 
 ## Artwork provenance

@@ -10,6 +10,20 @@ test('landing page states the job and has one primary path', async ({ page }) =>
   await expect(page.locator('img[alt]')).toHaveCount(1);
 });
 
+test('keyboard users can skip navigation and run the import preview', async ({ page }) => {
+  await page.goto('/demo');
+  await page.keyboard.press('Tab');
+  const skip = page.getByRole('link', { name: 'Skip to main content' });
+  await expect(skip).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main')).toBeFocused();
+
+  const preview = page.getByRole('button', { name: 'Preview 12 records' });
+  await preview.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Write import receipt' })).toBeVisible();
+});
+
 test('demo reset clears the isolated receipt ledger', async ({ page }) => {
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Preview 12 records' }).click();

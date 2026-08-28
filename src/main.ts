@@ -34,7 +34,7 @@ function shell(content: string, demo = false): string {
 
 function landing(): string {
   document.title = 'Health Data Bridge — map health records locally';
-  return shell(`<main id="main">
+  return shell(`<main id="main" tabindex="-1">
     <section class="hero contour-section">
       <div class="hero-copy">
         <p class="eyebrow">A private Android import map</p>
@@ -58,7 +58,7 @@ function landing(): string {
 function legal(kind: 'privacy' | 'terms'): string {
   const privacy = kind === 'privacy';
   document.title = `${privacy ? 'Privacy' : 'Terms'} — Health Data Bridge`;
-  return shell(`<main id="main" class="prose-page"><p class="eyebrow">Effective 28 August 2026</p><h1 tabindex="-1">${privacy ? 'Your records stay under your control' : 'Terms for using the bridge'}</h1>${privacy ? `
+  return shell(`<main id="main" tabindex="-1" class="prose-page"><p class="eyebrow">Effective 28 August 2026</p><h1 tabindex="-1">${privacy ? 'Your records stay under your control' : 'Terms for using the bridge'}</h1>${privacy ? `
     <h2>What the app stores</h2><p>The app stores imported records and receipts on your device. Browser storage uses device-bound encryption.</p>
     <h2>Data flow</h2><ol><li>Health Connect or your chosen file supplies records.</li><li>The app filters and maps records in memory.</li><li>The app writes an encrypted local ledger or your chosen download.</li></ol>
     <h2>What leaves the app</h2><p>Health records never go to our server. License checks send only your license token to Sociobot.</p>
@@ -72,12 +72,12 @@ function legal(kind: 'privacy' | 'terms'): string {
 
 function notFound(): string {
   document.title = 'Page not found — Health Data Bridge';
-  return shell(`<main id="main" class="not-found contour-section"><p class="eyebrow">Map edge</p><h1 tabindex="-1">This route stops here</h1><p>The page address does not match a place in this app.</p><a class="button primary" href="/" data-link>Return to the map</a></main>`);
+  return shell(`<main id="main" tabindex="-1" class="not-found contour-section"><p class="eyebrow">Map edge</p><h1 tabindex="-1">This route stops here</h1><p>The page address does not match a place in this app.</p><a class="button primary" href="/" data-link>Return to the map</a></main>`);
 }
 
 function bridgePage(demo: boolean): string {
   document.title = `${demo ? 'Demo' : 'Bridge'} — Health Data Bridge`;
-  return shell(`<main id="main" class="bridge-main"><div class="bridge-heading"><p class="eyebrow">${demo ? 'Working sample' : 'Local workspace'}</p><h1 tabindex="-1">Build a duplicate-safe import</h1><p>${demo ? 'Twelve sample records are ready to inspect.' : 'Connect on Android or choose a local Health Connect export.'}</p></div><div id="bridge-app" class="bridge-app" aria-live="polite"><div class="loading-state"><span class="survey-spinner" aria-hidden="true"></span><p>Opening the local ledger…</p></div></div></main>`, demo);
+  return shell(`<main id="main" tabindex="-1" class="bridge-main"><div class="bridge-heading"><p class="eyebrow">${demo ? 'Working sample' : 'Local workspace'}</p><h1 tabindex="-1">Build a duplicate-safe import</h1><p>${demo ? 'Twelve sample records are ready to inspect.' : 'Connect on Android or choose a local Health Connect export.'}</p></div><div id="bridge-app" class="bridge-app" aria-live="polite"><div class="loading-state"><span class="survey-spinner" aria-hidden="true"></span><p>Opening the local ledger…</p></div></div></main>`, demo);
 }
 
 function parseCsv(text: string): HealthRecord[] {

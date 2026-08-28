@@ -8,6 +8,44 @@ async function importSample(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Write import receipt' }).click();
 }
 
+type EncryptedPayload = { iv: number[]; data: number[] };
+
+async function readEncryptedLedger(page: import('@playwright/test').Page): Promise<EncryptedPayload> {
+  await page.waitForFunction(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('health-data-bridge');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<boolean>((resolve, reject) => {
+        const request = db.transaction('encrypted').objectStore('encrypted').get('receipts');
+        request.onsuccess = () => resolve(Boolean(request.result?.iv?.length && request.result?.data?.length));
+        request.onerror = () => reject(request.error);
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('health-data-bridge');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<EncryptedPayload>((resolve, reject) => {
+        const request = db.transaction('encrypted').objectStore('encrypted').get('receipts');
+        request.onsuccess = () => resolve(request.result as EncryptedPayload);
+        request.onerror = () => reject(request.error);
+      });
+    } finally {
+      db.close();
+    }
+  });
+}
+
 test('@claim:duplicate-safe second import writes zero duplicates', async ({ page }) => {
   await importSample(page);
   await expect(page.getByText('12', { exact: true }).first()).toBeVisible();
@@ -75,13 +113,17 @@ test('@claim:encrypted-storage keeps real receipts out of plaintext', async ({ p
   await page.locator('input[type=file]').setInputFiles({ name: 'health.json', mimeType: 'application/json', buffer: Buffer.from(fixture) });
   await page.getByRole('button', { name: 'Preview 1 records' }).click();
   await page.getByRole('button', { name: 'Write import receipt' }).click();
-  const stored = await page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('health-data-bridge'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
-    return await new Promise<unknown>((resolve, reject) => { const request = db.transaction('encrypted').objectStore('encrypted').get('receipts'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
-  });
+  await expect(page.getByText('The local ledger and encrypted receipt are saved.')).toBeVisible();
+  const stored = await readEncryptedLedger(page);
   expect(JSON.stringify(stored)).not.toContain('private-record-7');
-  expect(stored).toHaveProperty('iv');
-  expect(stored).toHaveProperty('data');
+  expect(stored.iv).toHaveLength(12);
+  expect(stored.data.length).toBeGreaterThan(0);
+
+  // Regression: a record is only considered saved when the ciphertext can be
+  // decrypted into the same local ledger after a full app reload.
+  await page.reload();
+  await expect(page.getByText('1 records in this local log')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Receipt history' })).toBeVisible();
 });
 
 test('@claim:paid-custom-fields saves a paid custom field name', async ({ page }) => {

@@ -67,4 +67,5 @@ export async function saveLocalData(demo: boolean, state: Pick<BridgeState, 'rec
 
 export function resetDemo(): void {
   sessionStorage.removeItem('demo:bridge-state');
+  sessionStorage.removeItem('demo:custom-fields');
 }

@@ -1,4 +1,4 @@
-const VERSION = 'hdb-v1.0.0';
+const VERSION = 'hdb-v1.0.2';
 const SHELL = ['/', '/demo', '/bridge', '/privacy', '/terms', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/assets/topographic-bridge-720.webp', '/assets/topographic-bridge-1280.webp'];
 
 self.addEventListener('install', event => {

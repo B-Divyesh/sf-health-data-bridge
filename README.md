@@ -25,7 +25,7 @@ The exact production build command is `npm run build`. Static output lands in `d
 
 ## Android project
 
-The Capacitor project lives in `android/`. Its native bridge requests read access only for steps, active calories, exercise sessions, and weight. A later Android work order can build and sign the APK.
+The Capacitor project lives in `android/`. Its native bridge requests read access only for steps, active calories, exercise sessions, and weight. The downloadable debug APK is for direct Android testing; a signed release is a separate distribution step.
 
 ```sh
 npm run cap:sync
@@ -45,7 +45,7 @@ Supported `type` values are `steps`, `activeEnergy`, `exercise`, and `weight`.
 
 ## Purchase
 
-Bridge Plus costs $9 once. It saves custom export field names. Import, receipts, CSV, and JSON remain free. Checkout and license verification use the Sociobot billing API; no product ID is hardcoded.
+New Bridge Plus sales are paused because the product is not registered with the billing service. Existing license holders can restore saved custom export field names. Import, receipts, CSV, and JSON remain free.
 
 ## Privacy and scope
 

@@ -2,7 +2,7 @@ import './style.css';
 import { sampleRecords } from './sample';
 import { loadLocalData, resetDemo, saveLocalData } from './storage';
 import { HealthConnect } from './native';
-import { buyUrl, cachedUnlock, captureLicense, verifyLicense } from './license';
+import { cachedUnlock, captureLicense, verifyLicense } from './license';
 import type { HealthRecord, ImportReceipt, MappedRecord, RecordKind } from './types';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -10,9 +10,15 @@ const routeLive = document.createElement('div');
 routeLive.className = 'sr-only';
 routeLive.setAttribute('aria-live', 'polite');
 document.body.append(routeLive);
+document.querySelector<HTMLAnchorElement>('.skip-link')?.addEventListener('click', event => {
+  event.preventDefault();
+  const main = document.querySelector<HTMLElement>('#main');
+  main?.focus();
+  main?.scrollIntoView({ behavior: 'instant' });
+});
 
-captureLicense();
-const BUILD = 'v1.0.0';
+const returnedLicense = captureLicense();
+const BUILD = 'v1.0.2';
 const TYPE_LABELS: Record<RecordKind, string> = {
   steps: 'Steps', activeEnergy: 'Active energy', exercise: 'Exercise time', weight: 'Weight'
 };
@@ -42,6 +48,7 @@ function landing(): string {
         <p class="lede">For Android loggers who need activity and weight records without sending their history to another service.</p>
         <div class="hero-action"><a class="button primary" href="/demo" data-link>Try it with sample data</a><span>Next, preview 12 records and their field map.</span></div>
         <ul class="plain-facts"><li>Records stay on this device.</li><li>Works offline after the first visit.</li><li>Core import and export are free.</li></ul>
+        <p class="android-download"><a class="inline-link" href="/downloads/health-data-bridge-debug-v1.0.2.apk" download>Download Android test build</a><br><small>Debug APK · SHA-256: <code>a23ed0183dada1944f4ee176bb3b436effa2c11a0fcbd432143c4e029d1779a1</code></small></p>
       </div>
       <figure class="hero-art"><picture><source srcset="/assets/topographic-bridge-720.webp 720w, /assets/topographic-bridge-1280.webp 1280w" type="image/webp"><img src="/assets/topographic-bridge-1280.webp" width="1280" height="853" alt="Two colored map routes meet at a blank paper ledger." fetchpriority="high" decoding="async"></picture><figcaption>Every route ends in a field you can inspect.</figcaption></figure>
     </section>
@@ -49,9 +56,9 @@ function landing(): string {
       <div><p class="eyebrow">The product, not a dashboard</p><h2 id="preview-title">See the map before you write</h2><p>Each Health Connect field has one visible local destination. The receipt lists new and skipped records.</p><a class="inline-link" href="/demo" data-link>Open the working sample →</a></div>
       <div class="map-sheet" aria-label="Example field mapping"><div><span>Health Connect</span><strong>Active calories</strong></div><svg viewBox="0 0 160 34" aria-hidden="true"><path d="M3 17h154"/><circle cx="3" cy="17" r="3"/><circle cx="157" cy="17" r="3"/></svg><div><span>Local field</span><strong>active_energy_kcal</strong></div><p class="receipt-stamp">12 new · 0 repeats</p></div>
     </section>
-    <section class="steps contour-section" aria-labelledby="steps-title"><p class="eyebrow">Four minutes, four stations</p><h2 id="steps-title">How the bridge works</h2><ol><li><span>01</span><h3>Choose records</h3><p>Grant only activity and weight access, or open a local export.</p></li><li><span>02</span><h3>Check the map</h3><p>Pick dates and inspect each source-to-log field.</p></li><li><span>03</span><h3>Write the receipt</h3><p>Export CSV or JSON. Repeats are skipped by record ID.</p></li></ol></section>
+    <section class="steps contour-section" aria-labelledby="steps-title"><p class="eyebrow">A four-station route</p><h2 id="steps-title">How the bridge works</h2><ol><li><span>01</span><h3>Choose records</h3><p>Grant only activity and weight access, or open a local export.</p></li><li><span>02</span><h3>Check the map</h3><p>Pick dates and inspect each source-to-log field.</p></li><li><span>03</span><h3>Write the receipt</h3><p>Export CSV or JSON. Repeats are skipped by record ID.</p></li></ol></section>
     <section class="boundaries" aria-labelledby="boundaries-title"><div><p class="eyebrow">Plain boundaries</p><h2 id="boundaries-title">Your records do not become our records</h2></div><ul><li>No account or cloud history.</li><li>No calorie targets or medical advice.</li><li>No provider sharing.</li><li>No Apple Health support in this version.</li></ul></section>
-    <section class="paid" aria-labelledby="paid-title"><div><p class="eyebrow">Optional one-time purchase</p><h2 id="paid-title">Use custom export field names</h2><p>Bridge Plus saves your field names for repeated exports. Import, receipts, CSV, and JSON remain free.</p></div><div class="price"><strong>$9</strong><span>one time</span><a class="button secondary" href="${buyUrl()}">Buy Bridge Plus <span class="sr-only">(opens hosted checkout)</span></a><button class="text-button" data-show-license>Have a license? Paste it</button><form class="license-form" hidden><label for="license-token">License token</label><div><input id="license-token" autocomplete="off"><button type="submit">Verify license</button></div><p class="form-status" aria-live="polite"></p></form></div></section>
+    <section class="paid" aria-labelledby="paid-title"><div><p class="eyebrow">Existing Bridge Plus licenses</p><h2 id="paid-title">Restore custom export field names</h2><p>New purchases are paused. Existing licenses still enable saved field names. Import, receipts, CSV, and JSON remain free.</p></div><div class="price"><button class="text-button" data-show-license>Paste an existing license</button><form class="license-form" hidden><label for="license-token">License token</label><div><input id="license-token" autocomplete="off"><button type="submit">Verify license</button></div><p class="form-status" aria-live="polite"></p></form></div></section>
   </main>`);
 }
 
@@ -66,7 +73,7 @@ function legal(kind: 'privacy' | 'terms'): string {
     <h2>Contact</h2><p>Email <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with a privacy question.</p>` : `
     <h2>Use</h2><p>Use the app to copy records you have permission to access. Check exports before relying on them.</p>
     <h2>Health notice</h2><p>This utility does not give medical advice. It does not calculate treatment or calorie targets.</p>
-    <h2>Purchase</h2><p>Bridge Plus costs $9 once. Sociobot is the merchant of record. A refund revokes the license.</p>
+    <h2>Existing licenses</h2><p>New Bridge Plus purchases are paused. Existing license holders can restore saved field names on this device.</p>
     <h2>Warranty</h2><p>The app is provided as available. Keep a separate copy of records you cannot replace.</p>`}</main>`);
 }
 
@@ -80,18 +87,53 @@ function bridgePage(demo: boolean): string {
   return shell(`<main id="main" tabindex="-1" class="bridge-main"><div class="bridge-heading"><p class="eyebrow">${demo ? 'Working sample' : 'Local workspace'}</p><h1 tabindex="-1">Build a duplicate-safe import</h1><p>${demo ? 'Twelve sample records are ready to inspect.' : 'Connect on Android or choose a local Health Connect export.'}</p></div><div id="bridge-app" class="bridge-app" aria-live="polite"><div class="loading-state"><span class="survey-spinner" aria-hidden="true"></span><p>Opening the local ledger…</p></div></div></main>`, demo);
 }
 
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quoted) {
+      if (character === '"' && text[index + 1] === '"') { cell += '"'; index += 1; }
+      else if (character === '"') quoted = false;
+      else cell += character;
+    } else if (character === '"' && cell.length === 0) quoted = true;
+    else if (character === ',') { row.push(cell.trim()); cell = ''; }
+    else if (character === '\n' || character === '\r') {
+      if (character === '\r' && text[index + 1] === '\n') index += 1;
+      row.push(cell.trim());
+      if (row.some(value => value !== '')) rows.push(row);
+      row = []; cell = '';
+    } else cell += character;
+  }
+  if (quoted) throw new Error('The CSV has an unclosed quoted field.');
+  row.push(cell.trim());
+  if (row.some(value => value !== '')) rows.push(row);
+  return rows;
+}
+
 function parseCsv(text: string): HealthRecord[] {
-  const [header, ...rows] = text.trim().split(/\r?\n/).filter(Boolean).map(row => row.split(',').map(cell => cell.trim()));
+  const [header, ...rows] = parseCsvRows(text);
   const required = ['id', 'type', 'startTime', 'endTime', 'value', 'unit', 'source'];
   if (!header || !required.every(field => header.includes(field))) throw new Error('The CSV needs id, type, startTime, endTime, value, unit, and source columns.');
+  if (rows.some(row => row.length !== header.length)) throw new Error('The CSV has a row with the wrong number of fields.');
   return rows.map(row => Object.fromEntries(header.map((key, index) => [key, key === 'value' ? Number(row[index]) : row[index]])) as unknown as HealthRecord);
 }
 
 function validateRecords(records: HealthRecord[]): HealthRecord[] {
   const kinds: RecordKind[] = ['steps', 'activeEnergy', 'exercise', 'weight'];
-  const valid = records.filter(record => record.id && kinds.includes(record.type) && Number.isFinite(record.value) && record.startTime && record.endTime);
-  if (!valid.length) throw new Error('No supported activity or weight records were found.');
-  return valid;
+  const units: Record<RecordKind, HealthRecord['unit']> = { steps: 'count', activeEnergy: 'kcal', exercise: 'min', weight: 'kg' };
+  if (!Array.isArray(records) || !records.length) throw new Error('No supported activity or weight records were found.');
+  const invalid = records.find(record => {
+    if (!record || typeof record.id !== 'string' || !record.id.trim() || !kinds.includes(record.type)) return true;
+    if (!Number.isFinite(record.value) || record.value < 0 || (record.type === 'weight' && record.value === 0)) return true;
+    if (record.unit !== units[record.type] || typeof record.source !== 'string' || !record.source.trim()) return true;
+    const start = Date.parse(record.startTime); const end = Date.parse(record.endTime);
+    return !Number.isFinite(start) || !Number.isFinite(end) || start > end;
+  });
+  if (invalid) throw new Error('Each record needs a valid ID, date range, non-negative value, source, and matching unit.');
+  return records;
 }
 
 function escapeCsv(value: unknown): string {
@@ -126,10 +168,12 @@ async function mountBridge(demo: boolean): Promise<void> {
   let logRecords = saved.records;
   let lastReceipt: ImportReceipt | undefined;
   let error = '';
-  const isPlus = cachedUnlock();
+  const isPlus = demo || cachedUnlock();
+  const fieldsStorage = demo ? sessionStorage : localStorage;
+  const fieldsKey = demo ? 'demo:custom-fields' : 'hdb:custom-fields';
   let mapFields: Record<RecordKind, string> = { ...MAP_FIELDS };
   if (isPlus) {
-    try { mapFields = { ...mapFields, ...JSON.parse(localStorage.getItem('hdb:custom-fields') || '{}') }; } catch { /* use defaults */ }
+    try { mapFields = { ...mapFields, ...JSON.parse(fieldsStorage.getItem(fieldsKey) || '{}') }; } catch { /* use defaults */ }
   }
 
   const filtered = () => source.filter(record => selectedTypes.includes(record.type) && record.startTime.slice(0, 10) >= dateFrom && record.startTime.slice(0, 10) <= dateTo);
@@ -172,13 +216,18 @@ async function mountBridge(demo: boolean): Promise<void> {
     host.querySelectorAll<HTMLInputElement>('[data-type]').forEach(input => input.addEventListener('change', () => { selectedTypes = [...host.querySelectorAll<HTMLInputElement>('[data-type]:checked')].map(item => item.value as RecordKind); mapped = []; render(); }));
     host.querySelector('[data-save-fields]')?.addEventListener('click', () => {
       host.querySelectorAll<HTMLInputElement>('[data-field-name]').forEach(input => { mapFields[input.dataset.fieldName as RecordKind] = input.value.trim() || MAP_FIELDS[input.dataset.fieldName as RecordKind]; });
-      localStorage.setItem('hdb:custom-fields', JSON.stringify(mapFields));
-      const status = host.querySelector<HTMLElement>('.field-status'); if (status) status.textContent = 'Field names saved on this device.';
+      fieldsStorage.setItem(fieldsKey, JSON.stringify(mapFields));
+      const status = host.querySelector<HTMLElement>('.field-status'); if (status) status.textContent = demo ? 'Field names saved for this demo session.' : 'Field names saved on this device.';
       mapped = []; 
     });
     host.querySelector('[data-preview]')?.addEventListener('click', () => { mapped = candidates.map(record => ({ ...record, localField: mapFields[record.type] })); render(); host.querySelector('#map-title')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
     host.querySelector('[data-import]')?.addEventListener('click', async () => {
-      const fresh = mapped.filter(record => !importedIds.includes(record.id));
+      const seen = new Set(importedIds);
+      const fresh = mapped.filter(record => {
+        if (seen.has(record.id)) return false;
+        seen.add(record.id);
+        return true;
+      });
       const duplicates = mapped.length - fresh.length;
       const receipt: ImportReceipt = { id: `HDB-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${String(receipts.length + 1).padStart(3, '0')}`, createdAt: new Date().toISOString(), dateFrom, dateTo, sourceCount: mapped.length, importedCount: fresh.length, duplicateCount: duplicates, recordIds: mapped.map(record => record.id), types: selectedTypes };
       importedIds = [...new Set([...importedIds, ...fresh.map(record => record.id)])];
@@ -200,7 +249,10 @@ function setupLicense(): void {
   });
   document.querySelector<HTMLFormElement>('.license-form')?.addEventListener('submit', async event => {
     event.preventDefault(); const input = document.querySelector<HTMLInputElement>('#license-token')!; const status = document.querySelector<HTMLElement>('.form-status')!;
-    status.textContent = 'Checking the license…'; status.textContent = await verifyLicense(input.value.trim()) ? 'Bridge Plus is active on this device.' : 'This license is not active. Check the token and try again.';
+    status.textContent = 'Checking the license…';
+    const valid = await verifyLicense(input.value.trim());
+    status.textContent = valid ? 'Bridge Plus is active on this device.' : 'This license is not active. Check the token and try again.';
+    if (valid) document.querySelector<HTMLElement>('[data-show-license]')!.textContent = 'Bridge Plus is active';
   });
   const licenseButton = document.querySelector<HTMLElement>('[data-show-license]');
   if (cachedUnlock() && licenseButton) licenseButton.textContent = 'Bridge Plus is active';
@@ -209,12 +261,15 @@ function setupLicense(): void {
 function setupNavigation(): void {
   document.querySelectorAll<HTMLAnchorElement>('a[data-link]').forEach(link => link.addEventListener('click', event => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault(); history.pushState({}, '', link.href); renderRoute();
+    event.preventDefault();
+    history.replaceState({ ...(history.state || {}), scrollY: window.scrollY }, '');
+    history.pushState({ scrollY: 0 }, '', link.href);
+    renderRoute(0);
   }));
   document.querySelector('[data-reset-demo]')?.addEventListener('click', () => { resetDemo(); mountBridge(true); });
 }
 
-function renderRoute(): void {
+function renderRoute(scrollY?: number): void {
   const path = location.pathname.replace(/\/$/, '') || '/';
   const routes: Record<string, () => string> = { '/': landing, '/demo': () => bridgePage(true), '/bridge': () => bridgePage(false), '/privacy': () => legal('privacy'), '/terms': () => legal('terms') };
   app.innerHTML = (routes[path] || notFound)();
@@ -234,11 +289,23 @@ function renderRoute(): void {
   if (path === '/bridge') mountBridge(false);
   const h1 = document.querySelector<HTMLHeadingElement>('h1');
   routeLive.textContent = h1?.textContent || '';
-  if (document.readyState === 'complete') h1?.focus({ preventScroll: true });
+  if (scrollY !== undefined) requestAnimationFrame(() => {
+    h1?.focus({ preventScroll: true });
+    window.scrollTo({ top: scrollY, behavior: 'instant' });
+  });
 }
 
-window.addEventListener('popstate', renderRoute);
+history.scrollRestoration = 'manual';
+if (!history.state) history.replaceState({ scrollY: window.scrollY }, '');
+window.addEventListener('popstate', event => renderRoute(Number(event.state?.scrollY) || 0));
 renderRoute();
+
+if (returnedLicense) void verifyLicense(returnedLicense).then(valid => {
+  const toast = document.querySelector<HTMLElement>('.status-toast');
+  if (toast) { toast.hidden = false; toast.textContent = valid ? 'Bridge Plus is active on this device.' : 'This license is not active. Paste a corrected token to try again.'; }
+  const licenseButton = document.querySelector<HTMLElement>('[data-show-license]');
+  if (valid && licenseButton) licenseButton.textContent = 'Bridge Plus is active';
+});
 
 if ('serviceWorker' in navigator) window.addEventListener('load', async () => {
   const registration = await navigator.serviceWorker.register('/sw.js');

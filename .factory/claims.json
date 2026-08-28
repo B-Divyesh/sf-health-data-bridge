@@ -49,6 +49,20 @@
     "sandbox": "fresh browser context with a cached valid test verdict; change a field name and preview its mapping"
   },
   {
+    "id": "demo-isolation",
+    "claim": "Demo sample data and preferences are never saved to real data.",
+    "where": "demo banner, demo documentation",
+    "test": "npm test -- --grep @claim:demo-isolation",
+    "sandbox": "fresh browser context seeded with a real custom field; change and reset demo field names, then start for real"
+  },
+  {
+    "id": "four-station-flow",
+    "claim": "The import route has four stations: source, range, map, and receipt.",
+    "where": "landing route section, demo progress rail",
+    "test": "npm test -- --grep @claim:four-station-flow",
+    "sandbox": "fresh browser context at /demo; inspect the accessible progress list"
+  },
+  {
     "id": "local-file-import",
     "claim": "The web build opens local Health Connect JSON and CSV exports.",
     "where": "bridge source station, README",
@@ -61,5 +75,12 @@
     "where": "bridge source station, README",
     "test": "npm test -- --grep @claim:narrow-health-permissions",
     "sandbox": "repository Android manifest; assert the exact health permission list and no write scope"
+  },
+  {
+    "id": "android-native-package",
+    "claim": "The Android download contains the registered native Health Connect bridge.",
+    "where": "landing Android download link, README",
+    "test": "npm test -- --grep @claim:android-native-package",
+    "sandbox": "checked-in debug APK and Android activity source; confirm package, native registrar, and four read-only record methods"
   }
 ]

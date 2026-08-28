@@ -1,4 +1,4 @@
-package in.sociobot.healthdatabridge
+package `in`.sociobot.healthdatabridge
 
 import android.content.Context
 import androidx.activity.result.ActivityResultLauncher
@@ -54,7 +54,7 @@ class HealthConnectBridgePlugin : Plugin() {
     }
 
     @PluginMethod
-    fun requestPermissions(call: PluginCall) {
+    override fun requestPermissions(call: PluginCall) {
         requestedTypes = call.getArray("recordTypes")?.toList<String>() ?: emptyList()
         val permissions = requestedTypes.mapNotNull(::permissionFor).toSet()
         if (permissions.isEmpty()) {

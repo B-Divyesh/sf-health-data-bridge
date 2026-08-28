@@ -55,6 +55,28 @@ test('@claim:duplicate-safe second import writes zero duplicates', async ({ page
   await expect(receipt.locator('dd').nth(1)).toHaveText('12');
 });
 
+test('@claim:batch-duplicate-safe repeated IDs in one input are written once', async ({ page }) => {
+  await page.goto('/bridge');
+  const fixture = JSON.stringify([
+    { id: 'same-id', type: 'steps', startTime: '2026-08-01T08:00:00.000Z', endTime: '2026-08-01T09:00:00.000Z', value: 100, unit: 'count', source: 'Phone' },
+    { id: 'same-id', type: 'steps', startTime: '2026-08-01T08:00:00.000Z', endTime: '2026-08-01T09:00:00.000Z', value: 200, unit: 'count', source: 'Phone' }
+  ]);
+  await page.locator('input[type=file]').setInputFiles({ name: 'duplicates.json', mimeType: 'application/json', buffer: Buffer.from(fixture) });
+  await page.getByRole('button', { name: 'Preview 2 records' }).click();
+  await page.getByRole('button', { name: 'Write import receipt' }).click();
+  const receipt = page.getByRole('article', { name: 'Latest import receipt' });
+  await expect(receipt.locator('dd').nth(0)).toHaveText('1');
+  await expect(receipt.locator('dd').nth(1)).toHaveText('1');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export JSON' }).click();
+  const stream = await (await downloadPromise).createReadStream();
+  let text = '';
+  for await (const chunk of stream!) text += chunk.toString();
+  const data = JSON.parse(text);
+  expect(data.records).toHaveLength(1);
+  expect(data.records[0]).toMatchObject({ id: 'same-id', value: 100 });
+});
+
 test('@claim:csv-export exports every local record', async ({ page }) => {
   await importSample(page);
   const downloadPromise = page.waitForEvent('download');
@@ -127,13 +149,46 @@ test('@claim:encrypted-storage keeps real receipts out of plaintext', async ({ p
 });
 
 test('@claim:paid-custom-fields saves a paid custom field name', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('sb_license:health-data-bridge:verdict', JSON.stringify({ valid: true, checkedAt: Date.now() })));
-  await page.goto('/demo');
+  await page.addInitScript(() => {
+    localStorage.setItem('sb_license:health-data-bridge', 'existing-license');
+    localStorage.setItem('sb_license:health-data-bridge:verdict', JSON.stringify({ token: 'existing-license', valid: true, checkedAt: Date.now() }));
+  });
+  await page.goto('/bridge');
   await page.getByLabel('Weight local field').fill('body.mass_kg');
   await page.getByRole('button', { name: 'Save field names' }).click();
   await expect(page.getByText('Field names saved on this device.')).toBeVisible();
-  await page.getByRole('button', { name: 'Preview 12 records' }).click();
+  const fixture = JSON.stringify([{ id: 'custom-1', type: 'weight', startTime: '2026-08-01T08:00:00.000Z', endTime: '2026-08-01T08:00:00.000Z', value: 72, unit: 'kg', source: 'Scale' }]);
+  await page.locator('input[type=file]').setInputFiles({ name: 'custom.json', mimeType: 'application/json', buffer: Buffer.from(fixture) });
+  await page.getByRole('button', { name: 'Preview 1 records' }).click();
   await expect(page.getByText('body.mass_kg').first()).toBeVisible();
+});
+
+test('@claim:demo-isolation demo preferences never read or overwrite real preferences', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('sb_license:health-data-bridge', 'existing-license');
+    localStorage.setItem('sb_license:health-data-bridge:verdict', JSON.stringify({ token: 'existing-license', valid: true, checkedAt: Date.now() }));
+    localStorage.setItem('hdb:custom-fields', JSON.stringify({ weight: 'real.mass' }));
+  });
+  await page.goto('/demo');
+  await expect(page.getByLabel('Weight local field')).toHaveValue('measurement.weight_kg');
+  await page.getByLabel('Weight local field').fill('demo.mass');
+  await page.getByRole('button', { name: 'Save field names' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('hdb:custom-fields'))).toContain('real.mass');
+  expect(await page.evaluate(() => sessionStorage.getItem('demo:custom-fields'))).toContain('demo.mass');
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  expect(await page.evaluate(() => sessionStorage.getItem('demo:custom-fields'))).toBeNull();
+  await page.getByRole('link', { name: 'Start for real' }).click();
+  await expect(page.getByLabel('Weight local field')).toHaveValue('real.mass');
+});
+
+test('@claim:four-station-flow demo exposes all four import stations', async ({ page }) => {
+  await page.goto('/demo');
+  const rail = page.getByRole('list', { name: 'Import progress' });
+  await expect(rail.getByRole('listitem')).toHaveCount(4);
+  await expect(rail).toContainText('Source');
+  await expect(rail).toContainText('Range');
+  await expect(rail).toContainText('Map');
+  await expect(rail).toContainText('Receipt');
 });
 
 test('@claim:local-file-import opens JSON and CSV exports', async ({ page }) => {
@@ -153,4 +208,19 @@ test('@claim:narrow-health-permissions declares only four health reads', async (
   const healthPermissions = [...manifest.matchAll(/android\.permission\.health\.([A-Z_]+)/g)].map(match => match[1]);
   expect(healthPermissions).toEqual(['READ_STEPS', 'READ_ACTIVE_CALORIES_BURNED', 'READ_EXERCISE', 'READ_WEIGHT']);
   expect(manifest).not.toContain('WRITE_');
+});
+
+test('@claim:android-native-package ships the registered Health Connect bridge', async () => {
+  const [activity, plugin, apk] = await Promise.all([
+    readFile('android/app/src/main/java/in/sociobot/healthdatabridge/MainActivity.java', 'utf8'),
+    readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectBridgePlugin.kt', 'utf8'),
+    readFile('public/downloads/health-data-bridge-debug-v1.0.2.apk')
+  ]);
+  expect(activity).toContain('registerPlugin(HealthConnectBridgePlugin.class)');
+  expect(plugin).toContain('@CapacitorPlugin(name = "HealthConnectBridge")');
+  expect(plugin).toContain('fun availability');
+  expect(plugin).toContain('fun requestPermissions');
+  expect(plugin).toContain('fun readRecords');
+  expect(apk.subarray(0, 2).toString()).toBe('PK');
+  expect(apk.length).toBeGreaterThan(1_000_000);
 });

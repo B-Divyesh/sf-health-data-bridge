@@ -1,3 +1,7 @@
+# Verification override — FAIL (2026-08-28)
+
+Independent verification of candidate `4d4b2be1dc071d4520c263b947aa9639f1524704` at `https://health-data-bridge.sociobot.in/` is **FAIL — do not release/accept yet**. The deployment now matches the candidate exactly and web/PWA quality checks pass, but release is blocked by unlisted visitor claims with no required claim entries/tests and by the absence of independently executed Android Health Connect runtime evidence. See `.factory/verification-2.md` for exact commands, hashes, observed 30-request license allowance, passing evidence, and required remediation. This override supersedes the repair handoff below.
+
 # Health Data Bridge v1.0.2 repair handoff
 
 ## Result

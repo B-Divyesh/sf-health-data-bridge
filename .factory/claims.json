@@ -1,0 +1,65 @@
+[
+  {
+    "id": "duplicate-safe",
+    "claim": "A second import writes zero duplicate records.",
+    "where": "landing preview, bridge receipt, README",
+    "test": "npm test -- --grep @claim:duplicate-safe",
+    "sandbox": "fresh browser context at /demo; import the 12 sample records twice"
+  },
+  {
+    "id": "csv-export",
+    "claim": "Exports the local log as CSV.",
+    "where": "bridge export toolbar, README",
+    "test": "npm test -- --grep @claim:csv-export",
+    "sandbox": "fresh browser context at /demo; import sample records and inspect the download"
+  },
+  {
+    "id": "json-export",
+    "claim": "Exports records and receipts as JSON.",
+    "where": "bridge export toolbar, README",
+    "test": "npm test -- --grep @claim:json-export",
+    "sandbox": "fresh browser context at /demo; import sample records and inspect the download"
+  },
+  {
+    "id": "local-only",
+    "claim": "Health records stay on the device.",
+    "where": "landing hero, privacy page, README",
+    "test": "npm test -- --grep @claim:local-only",
+    "sandbox": "fresh browser context at /demo; monitor the complete import and export flow for off-origin requests"
+  },
+  {
+    "id": "offline-reload",
+    "claim": "Works offline after the first visit.",
+    "where": "landing hero, README",
+    "test": "npm test -- --grep @claim:offline-reload",
+    "sandbox": "fresh browser context at /demo; install the service worker, go offline, reload, and preview records"
+  },
+  {
+    "id": "encrypted-storage",
+    "claim": "Local records and receipts use device-bound encryption.",
+    "where": "privacy page, README",
+    "test": "npm test -- --grep @claim:encrypted-storage",
+    "sandbox": "fresh browser context at /bridge; import a unique record and inspect IndexedDB for plaintext"
+  },
+  {
+    "id": "paid-custom-fields",
+    "claim": "Bridge Plus saves custom export field names.",
+    "where": "landing paid section, bridge mapping station, README",
+    "test": "npm test -- --grep @claim:paid-custom-fields",
+    "sandbox": "fresh browser context with a cached valid test verdict; change a field name and preview its mapping"
+  },
+  {
+    "id": "local-file-import",
+    "claim": "The web build opens local Health Connect JSON and CSV exports.",
+    "where": "bridge source station, README",
+    "test": "npm test -- --grep @claim:local-file-import",
+    "sandbox": "fresh browser context at /bridge; open one JSON fixture and one CSV fixture"
+  },
+  {
+    "id": "narrow-health-permissions",
+    "claim": "The Android bridge requests only steps, active calories, exercise, and weight reads.",
+    "where": "bridge source station, README",
+    "test": "npm test -- --grep @claim:narrow-health-permissions",
+    "sandbox": "repository Android manifest; assert the exact health permission list and no write scope"
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "slug": "health-data-bridge",
+  "title": "Health Data Bridge",
+  "territory": "utilities",
+  "summary": "Map Health Connect activity and weight records to a private local log.",
+  "user": "An Android fitness or nutrition logger who needs a visible, local import map from Health Connect data to a personal log.",
+  "smallest_useful_product": "Android app that asks for narrow Health Connect read permissions, previews each record type and date range, maps activity and weight records to a local CSV or JSON log, and records idempotent import receipts.",
+  "success_measure": "A pilot user imports one month of activity and weight in under five minutes, with zero duplicate records after a second import.",
+  "artifact_class": "android",
+  "monetization": "one-time",
+  "constraints": "Use Android Health Connect permissions only; minimum necessary scopes; no medical claims; encrypt local files; publish a plain-language data-flow screen.",
+  "state": "BUILT"
+}

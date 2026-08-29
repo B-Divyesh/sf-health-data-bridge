@@ -82,5 +82,54 @@
     "where": "landing Android download link, README",
     "test": "npm test -- --grep @claim:android-native-package",
     "sandbox": "checked-in debug APK and Android activity source; confirm package, native registrar, and four read-only record methods"
+  },
+  {
+    "id": "free-core-flow",
+    "claim": "Core import and export are free.",
+    "where": "landing facts, paid section, README",
+    "test": "npm test -- --grep @claim:free-core-flow",
+    "sandbox": "fresh browser context with no license; import the sample and export CSV and JSON"
+  },
+  {
+    "id": "no-account-cloud-history",
+    "claim": "There is no account or cloud history.",
+    "where": "landing boundaries",
+    "test": "npm test -- --grep @claim:no-account-cloud-history",
+    "sandbox": "fresh browser context; run the complete demo flow and assert there is no account control or off-origin request"
+  },
+  {
+    "id": "no-provider-sharing",
+    "claim": "The bridge does not share records with a provider.",
+    "where": "landing boundaries, README",
+    "test": "npm test -- --grep @claim:no-provider-sharing",
+    "sandbox": "fresh browser context; import and export sample records while recording every request"
+  },
+  {
+    "id": "sales-paused",
+    "claim": "New Bridge Plus purchases are paused.",
+    "where": "landing paid section, terms, README",
+    "test": "npm test -- --grep @claim:sales-paused",
+    "sandbox": "fresh browser context; assert the paused notice is present and no checkout action is offered"
+  },
+  {
+    "id": "apk-checksum",
+    "claim": "The displayed SHA-256 identifies the downloadable Android test build.",
+    "where": "landing Android download",
+    "test": "npm test -- --grep @claim:apk-checksum",
+    "sandbox": "fresh browser context; download the APK and compare its SHA-256 to the displayed digest"
+  },
+  {
+    "id": "no-medical-calculator",
+    "claim": "The bridge does not give medical advice or calculate calorie targets.",
+    "where": "landing boundaries, terms, README",
+    "test": "npm test -- --grep @claim:no-medical-calculator",
+    "sandbox": "fresh browser context; inspect the supported source fields and confirm no advice or target control is offered"
+  },
+  {
+    "id": "no-apple-health-import",
+    "claim": "This version does not import Apple Health.",
+    "where": "landing boundaries, README",
+    "test": "npm test -- --grep @claim:no-apple-health-import",
+    "sandbox": "fresh browser context and Android source; confirm the app exposes only Health Connect and local JSON/CSV inputs"
   }
 ]

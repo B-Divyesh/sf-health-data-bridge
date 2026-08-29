@@ -3,7 +3,7 @@
   "short_name": "Data Bridge",
   "description": "Map Health Connect records to a private local log.",
   "id": "/",
-  "start_url": "/bridge?v=1",
+  "start_url": "/bridge?v=1.0.3",
   "scope": "/",
   "display": "standalone",
   "background_color": "#F2EBDD",

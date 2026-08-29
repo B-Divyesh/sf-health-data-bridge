@@ -18,7 +18,7 @@ document.querySelector<HTMLAnchorElement>('.skip-link')?.addEventListener('click
 });
 
 const returnedLicense = captureLicense();
-const BUILD = 'v1.0.2';
+const BUILD = 'v1.0.3';
 const TYPE_LABELS: Record<RecordKind, string> = {
   steps: 'Steps', activeEnergy: 'Active energy', exercise: 'Exercise time', weight: 'Weight'
 };
@@ -48,7 +48,7 @@ function landing(): string {
         <p class="lede">For Android loggers who need activity and weight records without sending their history to another service.</p>
         <div class="hero-action"><a class="button primary" href="/demo" data-link>Try it with sample data</a><span>Next, preview 12 records and their field map.</span></div>
         <ul class="plain-facts"><li>Records stay on this device.</li><li>Works offline after the first visit.</li><li>Core import and export are free.</li></ul>
-        <p class="android-download"><a class="inline-link" href="/downloads/health-data-bridge-debug-v1.0.2.apk" download>Download Android test build</a><br><small>Debug APK · SHA-256: <code>a23ed0183dada1944f4ee176bb3b436effa2c11a0fcbd432143c4e029d1779a1</code></small></p>
+        <p class="android-download"><a class="inline-link" href="/downloads/health-data-bridge-debug-v1.0.3.apk" download>Download Android test build</a><br><small>Debug APK · SHA-256: <code>c24a465aac84c98a070d5ebee3e40c287c983f9d1efa35d85ac5049588d40acd</code></small></p>
       </div>
       <figure class="hero-art"><picture><source srcset="/assets/topographic-bridge-720.webp 720w, /assets/topographic-bridge-1280.webp 1280w" type="image/webp"><img src="/assets/topographic-bridge-1280.webp" width="1280" height="853" alt="Two colored map routes meet at a blank paper ledger." fetchpriority="high" decoding="async"></picture><figcaption>Every route ends in a field you can inspect.</figcaption></figure>
     </section>

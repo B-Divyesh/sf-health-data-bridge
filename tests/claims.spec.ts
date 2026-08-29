@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 async function importSample(page: import('@playwright/test').Page) {
   await page.goto('/demo');
@@ -9,6 +10,17 @@ async function importSample(page: import('@playwright/test').Page) {
 }
 
 type EncryptedPayload = { iv: number[]; data: number[] };
+
+test('claim manifest maps every visitor claim to one tagged regression test', async () => {
+  const [rawClaims, source] = await Promise.all([
+    readFile('.factory/claims.json', 'utf8'),
+    readFile('tests/claims.spec.ts', 'utf8')
+  ]);
+  const claims = JSON.parse(rawClaims) as Array<{ id: string }>;
+  for (const { id } of claims) {
+    expect(source.match(new RegExp(`@claim:${id.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}`, 'g')) || [], id).toHaveLength(1);
+  }
+});
 
 async function readEncryptedLedger(page: import('@playwright/test').Page): Promise<EncryptedPayload> {
   await page.waitForFunction(async () => {
@@ -214,7 +226,7 @@ test('@claim:android-native-package ships the registered Health Connect bridge',
   const [activity, plugin, apk] = await Promise.all([
     readFile('android/app/src/main/java/in/sociobot/healthdatabridge/MainActivity.java', 'utf8'),
     readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectBridgePlugin.kt', 'utf8'),
-    readFile('public/downloads/health-data-bridge-debug-v1.0.2.apk')
+    readFile('public/downloads/health-data-bridge-debug-v1.0.3.apk')
   ]);
   expect(activity).toContain('registerPlugin(HealthConnectBridgePlugin.class)');
   expect(plugin).toContain('@CapacitorPlugin(name = "HealthConnectBridge")');
@@ -223,4 +235,77 @@ test('@claim:android-native-package ships the registered Health Connect bridge',
   expect(plugin).toContain('fun readRecords');
   expect(apk.subarray(0, 2).toString()).toBe('PK');
   expect(apk.length).toBeGreaterThan(1_000_000);
+});
+
+test('@claim:free-core-flow imports and exports without a license', async ({ page }) => {
+  await page.goto('/demo');
+  expect(await page.evaluate(() => localStorage.getItem('sb_license:health-data-bridge'))).toBeNull();
+  await page.getByRole('button', { name: 'Preview 12 records' }).click();
+  await page.getByRole('button', { name: 'Write import receipt' }).click();
+  await expect(page.getByText('12 records in this local log')).toBeVisible();
+  for (const name of ['Export CSV', 'Export JSON']) {
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name }).click();
+    expect((await downloadPromise).suggestedFilename()).toMatch(/health-data-bridge-log\.(csv|json)$/);
+  }
+});
+
+test('@claim:no-account-cloud-history provides no account path or cloud request', async ({ page }) => {
+  const external: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).origin !== 'http://127.0.0.1:4173') external.push(request.url());
+  });
+  await importSample(page);
+  await expect(page.locator('input[type="email"], input[type="password"], [data-account], a[href*="signin"], a[href*="login"]')).toHaveCount(0);
+  expect(external).toEqual([]);
+});
+
+test('@claim:no-provider-sharing keeps the import and export flow on this origin', async ({ page }) => {
+  const external: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).origin !== 'http://127.0.0.1:4173') external.push(request.url());
+  });
+  await importSample(page);
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export JSON' }).click();
+  await downloadPromise;
+  expect(external).toEqual([]);
+});
+
+test('@claim:sales-paused does not offer a checkout while purchases are paused', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('New purchases are paused.')).toBeVisible();
+  await expect(page.locator('a[href*="/checkout"], form[action*="/checkout"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Paste an existing license' })).toBeVisible();
+});
+
+test('@claim:apk-checksum matches the downloaded Android package', async ({ page }) => {
+  await page.goto('/');
+  const printed = await page.locator('.android-download code').textContent();
+  expect(printed).toMatch(/^[a-f0-9]{64}$/);
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Download Android test build' }).click();
+  const download = await downloadPromise;
+  const stream = await download.createReadStream();
+  const digest = createHash('sha256');
+  for await (const chunk of stream!) digest.update(chunk);
+  expect(digest.digest('hex')).toBe(printed);
+});
+
+test('@claim:no-medical-calculator offers record mapping, not advice or targets', async ({ page }) => {
+  await page.goto('/bridge');
+  await expect(page.getByRole('heading', { name: 'Build a duplicate-safe import' })).toBeVisible();
+  await expect(page.locator('input, button, select, textarea').filter({ hasText: /calorie target|medical advice|treatment/i })).toHaveCount(0);
+  await page.goto('/terms');
+  await expect(page.getByText('This utility does not give medical advice.')).toBeVisible();
+  await expect(page.getByText('It does not calculate treatment or calorie targets.')).toBeVisible();
+});
+
+test('@claim:no-apple-health-import exposes only Health Connect and local file inputs', async ({ page }) => {
+  await page.goto('/bridge');
+  await expect(page.getByText('On Android, request only the record types below. On the web, open a JSON or CSV export.')).toBeVisible();
+  await expect(page.locator('text=/Apple Health/i')).toHaveCount(0);
+  const plugin = await readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectBridgePlugin.kt', 'utf8');
+  expect(plugin).toContain('HealthConnectClient');
+  expect(plugin).not.toMatch(/apple health|healthkit/i);
 });

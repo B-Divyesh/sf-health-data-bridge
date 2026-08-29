@@ -140,8 +140,8 @@ test('new sales are not linked while the external checkout is unavailable', asyn
 test('landing offers the built Android test package with its checksum', async ({ page }) => {
   await page.goto('/');
   const download = page.getByRole('link', { name: 'Download Android test build' });
-  await expect(download).toHaveAttribute('href', '/downloads/health-data-bridge-debug-v1.0.2.apk');
-  await expect(page.getByText('SHA-256:', { exact: false })).toContainText('a23ed0183dada1944f4ee176bb3b436effa2c11a0fcbd432143c4e029d1779a1');
+  await expect(download).toHaveAttribute('href', '/downloads/health-data-bridge-debug-v1.0.3.apk');
+  await expect(page.locator('.android-download code')).toHaveText(/^[a-f0-9]{64}$/);
 });
 
 test('SPA navigation starts at the heading and browser back restores scroll', async ({ page }) => {

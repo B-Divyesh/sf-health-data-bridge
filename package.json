@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "playwright test",
-    "cap:sync": "npm run build && cap sync android"
+    "cap:sync": "npm run build && cap sync android && node scripts/exclude-android-download.mjs",
+    "android:build": "npm run cap:sync && cd android && ./gradlew :app:clean :app:assembleDebug test assembleDebugAndroidTest"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",

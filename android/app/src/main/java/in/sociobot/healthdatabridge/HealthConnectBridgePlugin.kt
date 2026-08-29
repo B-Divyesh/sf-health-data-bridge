@@ -102,7 +102,21 @@ class HealthConnectBridgePlugin : Plugin() {
     }
 
     private suspend fun <T : Record> read(recordType: KClass<T>, start: Instant, end: Instant): List<T> {
-        return client().readRecords(ReadRecordsRequest(recordType, TimeRangeFilter.between(start, end))).records
+        val records = mutableListOf<T>()
+        var pageToken: String? = null
+        do {
+            val page = client().readRecords(
+                ReadRecordsRequest(
+                    recordType = recordType,
+                    timeRangeFilter = TimeRangeFilter.between(start, end),
+                    pageSize = 1_000,
+                    pageToken = pageToken
+                )
+            )
+            records += page.records
+            pageToken = page.pageToken
+        } while (pageToken != null)
+        return records
     }
 
     private fun toJson(record: Record): JSObject {

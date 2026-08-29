@@ -55,6 +55,25 @@ ANDROID_HOME=/tmp/hdb-android-sdk ANDROID_SDK_ROOT=/tmp/hdb-android-sdk \
 - Local `verify-url.sh`: HTTP 200, 574 ms load, correct title and `lang=en`,
   one h1/main, no missing alt text or unlabeled buttons, and no console errors.
 
+## Deployment evidence
+
+Static deployment completed on 2026-08-29 to
+`https://health-data-bridge.sociobot.in/` (deployment
+`ed44a9ca-afeb-438a-a8fd-4fe9cd47d68b`).
+
+- Live `verify-url.sh` passed: HTTP 200, 1,077 ms load, title/lang/one h1/main
+  present, no missing image alt text or unlabeled buttons, and no console
+  errors.
+- The live 390 px demo imported 12 new records and then 0 new / 12 skipped on
+  the repeat import; keyboard skip-link operation and zero horizontal overflow
+  also passed.
+- Exact SHA-256 matches were confirmed for live `index.html`, hashed JS and
+  CSS, and the APK. Live APK digest:
+  `c24a465aac84c98a070d5ebee3e40c287c983f9d1efa35d85ac5049588d40acd`.
+- Live hashed JS uses `Cache-Control: public, max-age=31536000, immutable`.
+  An unknown route returns HTTP 404. CSP, HSTS, `Referrer-Policy`,
+  `X-Content-Type-Options`, and `Permissions-Policy` are present.
+
 ## Android runtime evidence
 
 The native project, registration, four read-only Health Connect scopes, and

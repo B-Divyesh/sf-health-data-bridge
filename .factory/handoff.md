@@ -67,19 +67,18 @@ npm run android:build
 ## Deployment evidence
 
 Static deployment completed on 2026-08-29 to
-`https://health-data-bridge.sociobot.in/` (deployment
-`ed44a9ca-afeb-438a-a8fd-4fe9cd47d68b`).
+`https://health-data-bridge.sociobot.in/` from repair commit
+`b5692ab88e3bb4d26ea2d3411fd6dc87e58ef702`.
 
-- Live `verify-url.sh` passed: HTTP 200, 1,077 ms load, title/lang/one h1/main
+- Live `verify-url.sh` passed: HTTP 200, 891 ms load, title/lang/one h1/main
   present, no missing image alt text or unlabeled buttons, and no console
   errors.
-- The live 390 px demo imported 12 new records and then 0 new / 12 skipped on
-  the repeat import; keyboard skip-link operation and zero horizontal overflow
-  also passed.
-- This deployment evidence applies to the prior published v1.0.3 artifact.
-  The repaired pagination/package artifact is pushed after this handoff update;
-  the final live verification and digest are recorded below once the static
-  deployment serves this commit.
+- The local browser suite covered the 390 px demo: it imported 12 new records
+  and then 0 new / 12 skipped on a repeat import, with keyboard skip-link
+  operation and zero horizontal overflow. This behavior is unchanged in the
+  deployed build.
+- Live `index.html` references `index-CYD29SJf.js`; the live APK SHA-256 is
+  `def44bb7fcc9d366044a6ecebc9f0a44e34409291caa2ccf76360f7a31a71abe`.
 - Live hashed JS uses `Cache-Control: public, max-age=31536000, immutable`.
   An unknown route returns HTTP 404. CSP, HSTS, `Referrer-Policy`,
   `X-Content-Type-Options`, and `Permissions-Policy` are present.

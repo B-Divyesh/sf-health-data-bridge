@@ -97,7 +97,7 @@ test('@claim:batch-duplicate-safe repeated IDs in one input are written once', a
   expect(data.records[0]).toMatchObject({ id: 'same-id', value: 100 });
 });
 
-test('@claim:date-range-map filters records and explains a reversed range', async ({ page }) => {
+test('@claim:date-range-map filters records by local calendar dates across UTC boundaries', async ({ page, browser }) => {
   await page.goto('/demo');
   await page.locator('[data-from]').fill('2026-08-24');
   await page.locator('[data-from]').dispatchEvent('change');
@@ -110,6 +110,33 @@ test('@claim:date-range-map filters records and explains a reversed range', asyn
   await page.locator('[data-from]').dispatchEvent('change');
   await expect(page.getByRole('alert')).toContainText('Choose an end date that is on or after the start date.');
   await expect(page.getByRole('button', { name: 'Preview 0 records' })).toBeDisabled();
+
+  for (const [timezoneId, startTime, localDay, adjacentDay] of [
+    ['America/Los_Angeles', '2026-08-27T06:30:00.000Z', '2026-08-26', '2026-08-27'],
+    ['Asia/Kolkata', '2026-08-21T19:00:00.000Z', '2026-08-22', '2026-08-21']
+  ]) {
+    const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4173', timezoneId });
+    const boundaryPage = await context.newPage();
+    try {
+      await boundaryPage.goto('/bridge');
+      const fixture = JSON.stringify([{ id: `edge-${timezoneId}`, type: 'steps', startTime, endTime: startTime, value: 1, unit: 'count', source: 'Health Connect' }]);
+      await boundaryPage.locator('input[type=file]').setInputFiles({ name: 'timezone-boundary.json', mimeType: 'application/json', buffer: Buffer.from(fixture) });
+
+      await expect(boundaryPage.locator('[data-from]')).toHaveValue(localDay);
+      await expect(boundaryPage.locator('[data-to]')).toHaveValue(localDay);
+      await expect(boundaryPage.getByText('1 records', { exact: true })).toBeVisible();
+      await expect(boundaryPage.getByRole('button', { name: 'Preview 1 records' })).toBeEnabled();
+
+      await boundaryPage.locator('[data-from]').fill(adjacentDay);
+      await boundaryPage.locator('[data-from]').dispatchEvent('change');
+      await boundaryPage.locator('[data-to]').fill(adjacentDay);
+      await boundaryPage.locator('[data-to]').dispatchEvent('change');
+      await expect(boundaryPage.getByText('0 records', { exact: true })).toBeVisible();
+      await expect(boundaryPage.getByRole('button', { name: 'Preview 0 records' })).toBeDisabled();
+    } finally {
+      await context.close();
+    }
+  }
 });
 
 test('@claim:csv-export exports every local record', async ({ page }) => {
@@ -247,23 +274,30 @@ test('@claim:narrow-health-permissions declares only four health reads', async (
 });
 
 test('@claim:android-native-package ships the registered Health Connect bridge', async () => {
-  const [activity, plugin, paging, instrumentation, excludeScript, apk] = await Promise.all([
+  const [activity, plugin, reader, paging, instrumentation, providerInstrumentation, instrumentationEntries, excludeScript, apk] = await Promise.all([
     readFile('android/app/src/main/java/in/sociobot/healthdatabridge/MainActivity.java', 'utf8'),
     readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectBridgePlugin.kt', 'utf8'),
+    readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectRecordReader.kt', 'utf8'),
     readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectPaging.kt', 'utf8'),
     readFile('android/app/src/androidTest/java/in/sociobot/healthdatabridge/NativeBridgeInstrumentedTest.java', 'utf8'),
+    readFile('android/app/src/androidTest/java/in/sociobot/healthdatabridge/HealthConnectProviderInstrumentedTest.kt', 'utf8'),
+    readdir('android/app/src/androidTest/java', { recursive: true }),
     readFile('scripts/exclude-android-download.mjs', 'utf8'),
-    readFile('public/downloads/health-data-bridge-debug-v1.0.4.apk')
+    readFile('public/downloads/health-data-bridge-debug-v1.0.5.apk')
   ]);
   expect(activity).toContain('registerPlugin(HealthConnectBridgePlugin.class)');
   expect(plugin).toContain('@CapacitorPlugin(name = "HealthConnectBridge")');
   expect(plugin).toContain('fun availability');
   expect(plugin).toContain('fun requestPermissions');
   expect(plugin).toContain('fun readRecords');
-  expect(plugin).toContain('collectHealthConnectPages');
-  expect(plugin).toContain('pageSize = 1_000');
+  expect(reader).toContain('collectHealthConnectPages');
+  expect(reader).toContain('pageSize = 1_000');
   expect(paging).toContain('seenTokens');
   expect(instrumentation).toContain('in.sociobot.healthdatabridge');
+  expect(instrumentationEntries).not.toContain('ExampleInstrumentedTest.java');
+  expect(instrumentation).not.toContain('com.getcapacitor.app');
+  expect(providerInstrumentation).toContain('deniedThenGrantedPermissionReadsEveryPageFromOneMonth');
+  expect(providerInstrumentation).toContain('2_001');
   expect(excludeScript).toContain('health-data-bridge-debug');
   expect(apk.subarray(0, 2).toString()).toBe('PK');
   expect(apk.length).toBeGreaterThan(1_000_000);

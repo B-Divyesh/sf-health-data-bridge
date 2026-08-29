@@ -18,7 +18,7 @@
     "claim": "Choose dates to preview only matching records.",
     "where": "landing route section, bridge range station, README",
     "test": "npm test -- --grep @claim:date-range-map",
-    "sandbox": "fresh browser context at /demo; select a two-day range, inspect the matched count, then reverse the range and inspect the announced recovery"
+    "sandbox": "fresh browser contexts at /demo and /bridge; verify the normal and reversed ranges, then verify local-midnight records in America/Los_Angeles and Asia/Kolkata"
   },
   {
     "id": "csv-export",

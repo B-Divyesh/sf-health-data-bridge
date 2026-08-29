@@ -10,8 +10,6 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
-import androidx.health.connect.client.request.ReadRecordsRequest
-import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.lifecycle.lifecycleScope
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -22,7 +20,6 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
-import kotlin.reflect.KClass
 
 @CapacitorPlugin(name = "HealthConnectBridge")
 class HealthConnectBridgePlugin : Plugin() {
@@ -45,11 +42,9 @@ class HealthConnectBridgePlugin : Plugin() {
 
     @PluginMethod
     fun availability(call: PluginCall) {
-        val status = HealthConnectClient.getSdkStatus(context)
-        val result = JSObject().put("available", status == HealthConnectClient.SDK_AVAILABLE)
-        if (status != HealthConnectClient.SDK_AVAILABLE) {
-            result.put("reason", if (status == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED) "Health Connect needs an update." else "Health Connect is not installed.")
-        }
+        val availability = describeHealthConnectStatus(HealthConnectClient.getSdkStatus(context))
+        val result = JSObject().put("available", availability.available)
+        availability.reason?.let { result.put("reason", it) }
         call.resolve(result)
     }
 
@@ -77,7 +72,8 @@ class HealthConnectBridgePlugin : Plugin() {
         activity.lifecycleScope.launch {
             try {
                 val records = JSArray()
-                for (type in types) readType(type, start, end).forEach { records.put(toJson(it)) }
+                val reader = HealthConnectRecordReader(client())
+                for (type in types) reader.readType(type, start, end).forEach { records.put(toJson(it)) }
                 call.resolve(JSObject().put("records", records))
             } catch (error: Exception) {
                 call.reject("Health Connect could not read these records.", error)
@@ -91,28 +87,6 @@ class HealthConnectBridgePlugin : Plugin() {
         "exercise" -> HealthPermission.getReadPermission(ExerciseSessionRecord::class)
         "weight" -> HealthPermission.getReadPermission(WeightRecord::class)
         else -> null
-    }
-
-    private suspend fun readType(type: String, start: Instant, end: Instant): List<Record> = when (type) {
-        "steps" -> read(StepsRecord::class, start, end)
-        "activeEnergy" -> read(ActiveCaloriesBurnedRecord::class, start, end)
-        "exercise" -> read(ExerciseSessionRecord::class, start, end)
-        "weight" -> read(WeightRecord::class, start, end)
-        else -> emptyList()
-    }
-
-    private suspend fun <T : Record> read(recordType: KClass<T>, start: Instant, end: Instant): List<T> {
-        return collectHealthConnectPages { pageToken ->
-            val page = client().readRecords(
-                ReadRecordsRequest(
-                    recordType = recordType,
-                    timeRangeFilter = TimeRangeFilter.between(start, end),
-                    pageSize = 1_000,
-                    pageToken = pageToken
-                )
-            )
-            HealthConnectPage(page.records, page.pageToken)
-        }
     }
 
     private fun toJson(record: Record): JSObject {

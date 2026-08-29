@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Test-only permission used to seed an emulator's real Health Connect
+         provider. It is not merged into the product APK. -->
+    <uses-permission android:name="android.permission.health.WRITE_STEPS" />
+</manifest>

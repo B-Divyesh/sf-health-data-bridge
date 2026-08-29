@@ -33,11 +33,19 @@ cd android
 ./gradlew assembleDebug
 ```
 
+With an Android 14+ device or emulator that includes Health Connect, run
+`npm run android:device-test`. The device test uses test-only write permission
+to seed 2,001 step records, then exercises denied and granted read permission
+against the production paging path. Test-only permissions are not present in
+the app APK.
+
 To publish a fresh debug APK from the current source, run `npm run android:publish`.
 That command builds a native-only Capacitor bundle, verifies it does not package
 the public APK download, copies the new artifact to `public/downloads/`, and
-stamps the landing page with its SHA-256. The deployed static output remains
-`dist/`; `dist-native/` is a temporary Android-only build input.
+stamps the landing page with its SHA-256. Published verification compares every
+APK payload entry, so independent debug-signing certificates do not create a
+false mismatch. The deployed static output remains `dist/`; `dist-native/` is
+a temporary Android-only build input.
 
 ## File formats
 

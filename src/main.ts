@@ -19,8 +19,8 @@ document.querySelector<HTMLAnchorElement>('.skip-link')?.addEventListener('click
 });
 
 const returnedLicense = captureLicense();
-const BUILD = 'v1.0.4';
-const ANDROID_TEST_APK = '/downloads/health-data-bridge-debug-v1.0.4.apk';
+const BUILD = 'v1.0.5';
+const ANDROID_TEST_APK = '/downloads/health-data-bridge-debug-v1.0.5.apk';
 const apkDigest = document.querySelector<HTMLMetaElement>('meta[name="health-data-bridge-apk-sha256"]')?.content || '';
 const isNativeAndroid = Capacitor.getPlatform() === 'android';
 const TYPE_LABELS: Record<RecordKind, string> = {
@@ -158,14 +158,30 @@ function download(name: string, content: string, type: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function localDateKey(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function localDateBoundary(value: string, followingDay = false): Date {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day + Number(followingDay));
+}
+
 async function mountBridge(demo: boolean): Promise<void> {
   const host = document.querySelector<HTMLDivElement>('#bridge-app');
   if (!host) return;
   const saved = await loadLocalData(demo);
   let source = demo ? sampleRecords : [];
   let selectedTypes: RecordKind[] = ['steps', 'activeEnergy', 'exercise', 'weight'];
-  let dateFrom = demo ? '2026-08-22' : new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
-  let dateTo = demo ? '2026-08-26' : new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  let dateFrom = demo ? '2026-08-22' : localDateKey(thirtyDaysAgo);
+  let dateTo = demo ? '2026-08-26' : localDateKey(today);
   let mapped: MappedRecord[] = [];
   let receipts = saved.receipts;
   let importedIds = saved.importedIds;
@@ -181,7 +197,12 @@ async function mountBridge(demo: boolean): Promise<void> {
   }
 
   const validRange = () => Boolean(dateFrom && dateTo && dateFrom <= dateTo);
-  const filtered = () => validRange() ? source.filter(record => selectedTypes.includes(record.type) && record.startTime.slice(0, 10) >= dateFrom && record.startTime.slice(0, 10) <= dateTo) : [];
+  const filtered = () => {
+    if (!validRange()) return [];
+    const start = localDateBoundary(dateFrom).getTime();
+    const end = localDateBoundary(dateTo, true).getTime();
+    return source.filter(record => selectedTypes.includes(record.type) && Date.parse(record.startTime) >= start && Date.parse(record.startTime) < end);
+  };
   const render = () => {
     const candidates = filtered();
     const rangeError = !validRange() ? 'Choose an end date that is on or after the start date.' : '';
@@ -202,7 +223,7 @@ async function mountBridge(demo: boolean): Promise<void> {
         const text = await file.text();
         const parsed = file.name.toLowerCase().endsWith('.csv') ? parseCsv(text) : (() => { const data = JSON.parse(text); return Array.isArray(data) ? data : data.records; })();
         source = validateRecords(parsed); mapped = []; error = '';
-        const dates = source.map(record => record.startTime.slice(0, 10)).sort();
+        const dates = source.map(record => localDateKey(record.startTime)).sort();
         dateFrom = dates[0]; dateTo = dates[dates.length - 1]; render();
       } catch (reason) { error = reason instanceof Error ? reason.message : 'Choose a Health Connect JSON or CSV export.'; render(); }
     });
@@ -217,7 +238,8 @@ async function mountBridge(demo: boolean): Promise<void> {
         const availability = await HealthConnect.availability();
         if (!availability.available) throw new Error(availability.reason || 'Health Connect is not available on this device.');
         const permission = await HealthConnect.requestPermissions({ recordTypes: selectedTypes });
-        const result = await HealthConnect.readRecords({ recordTypes: permission.granted, startTime: new Date(`${dateFrom}T00:00:00`).toISOString(), endTime: new Date(`${dateTo}T23:59:59`).toISOString() });
+        if (!permission.granted.length) throw new Error('No Health Connect read permissions were granted.');
+        const result = await HealthConnect.readRecords({ recordTypes: permission.granted, startTime: localDateBoundary(dateFrom).toISOString(), endTime: localDateBoundary(dateTo, true).toISOString() });
         source = validateRecords(result.records); mapped = []; status.textContent = `${source.length} records read.`; render();
       } catch (reason) { status.textContent = reason instanceof Error ? `${reason.message} Choose a local export instead.` : 'Health Connect could not be read. Choose a local export instead.'; }
     });

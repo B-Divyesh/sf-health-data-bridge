@@ -12,6 +12,9 @@ test('landing page states the job and has one primary path', async ({ page }) =>
   await expect(page.locator('main')).toHaveCount(1);
   await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeVisible();
   await expect(page.locator('img[alt]')).toHaveCount(1);
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Map Health Connect records to your local log');
+  await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute('content', /duplicate-safe import receipt/);
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', 'https://health-data-bridge.sociobot.in/assets/social-card.webp');
 });
 
 test('keyboard users can skip navigation and run the import preview', async ({ page }) => {
@@ -140,10 +143,104 @@ test('new sales are not linked while the external checkout is unavailable', asyn
   await expect(page.locator('a[href*="/checkout"]')).toHaveCount(0);
 });
 
+test('native bridge handles provider and permission failures, then completes a repeat-safe import', async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4173', timezoneId: 'America/Los_Angeles' });
+  const page = await context.newPage();
+  const nativeRecords = [{
+    id: 'native-boundary-1', type: 'steps', startTime: '2026-08-27T06:30:00.000Z',
+    endTime: '2026-08-27T06:31:00.000Z', value: 321, unit: 'count', source: 'Health Connect'
+  }];
+  await page.addInitScript(records => {
+    const calls: Array<{ method: string; options: unknown }> = [];
+    let scenario = 'update';
+    Object.defineProperty(window, '__nativeTest', {
+      value: {
+        calls,
+        use(next: string) { scenario = next; }
+      }
+    });
+    Object.defineProperty(window, 'androidBridge', { value: {} });
+    Object.defineProperty(window, 'Capacitor', {
+      configurable: true,
+      writable: true,
+      value: {
+        PluginHeaders: [{ name: 'HealthConnectBridge', methods: [
+          { name: 'availability', rtype: 'promise' },
+          { name: 'requestPermissions', rtype: 'promise' },
+          { name: 'readRecords', rtype: 'promise' }
+        ] }],
+        nativePromise(_plugin: string, method: string, options: unknown) {
+          calls.push({ method, options });
+          if (method === 'availability') {
+            return Promise.resolve(scenario === 'update'
+              ? { available: false, reason: 'Health Connect needs an update.' }
+              : { available: true });
+          }
+          if (method === 'requestPermissions') {
+            return Promise.resolve({ granted: scenario === 'denied' ? [] : ['steps'] });
+          }
+          return Promise.resolve({ records });
+        }
+      }
+    });
+  }, nativeRecords);
+
+  try {
+    await page.goto('/bridge');
+    await page.locator('[data-from]').fill('2026-08-26');
+    await page.locator('[data-from]').dispatchEvent('change');
+    await page.locator('[data-to]').fill('2026-08-26');
+    await page.locator('[data-to]').dispatchEvent('change');
+
+    await page.getByRole('button', { name: 'Read Health Connect' }).click();
+    await expect(page.getByText('Health Connect needs an update. Choose a local export instead.')).toBeVisible();
+
+    await page.evaluate(() => (window as unknown as { __nativeTest: { use(value: string): void } }).__nativeTest.use('denied'));
+    await page.getByRole('button', { name: 'Read Health Connect' }).click();
+    await expect(page.getByText('No Health Connect read permissions were granted. Choose a local export instead.')).toBeVisible();
+
+    await page.evaluate(() => (window as unknown as { __nativeTest: { use(value: string): void } }).__nativeTest.use('granted'));
+    await page.getByRole('button', { name: 'Read Health Connect' }).click();
+    await expect(page.getByText('1 records', { exact: true })).toBeVisible();
+    const readCall = await page.evaluate(() => {
+      const calls = (window as unknown as { __nativeTest: { calls: Array<{ method: string; options: unknown }> } }).__nativeTest.calls;
+      return calls.slice().reverse().find(call => call.method === 'readRecords');
+    });
+    expect(readCall?.options).toMatchObject({
+      recordTypes: ['steps'],
+      startTime: '2026-08-26T07:00:00.000Z',
+      endTime: '2026-08-27T07:00:00.000Z'
+    });
+
+    await page.getByRole('button', { name: 'Preview 1 records' }).click();
+    await page.getByRole('button', { name: 'Write import receipt' }).click();
+    await page.getByRole('button', { name: 'Write import receipt' }).click();
+    const receipt = page.getByRole('article', { name: 'Latest import receipt' });
+    await expect(receipt.locator('dd').nth(0)).toHaveText('0');
+    await expect(receipt.locator('dd').nth(1)).toHaveText('1');
+
+    const firstExport = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export JSON' }).click();
+    const firstPayload = JSON.parse(await readFile(await (await firstExport).path() as string, 'utf8'));
+    expect(firstPayload.records).toHaveLength(1);
+    expect(firstPayload.records[0]).toMatchObject({ id: 'native-boundary-1', value: 321 });
+    expect(firstPayload.receipts.at(-1)).toMatchObject({ importedCount: 0, duplicateCount: 1 });
+
+    await page.reload();
+    const persistedExport = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export JSON' }).click();
+    const persistedPayload = JSON.parse(await readFile(await (await persistedExport).path() as string, 'utf8'));
+    expect(persistedPayload.records).toHaveLength(1);
+    expect(persistedPayload.receipts).toHaveLength(2);
+  } finally {
+    await context.close();
+  }
+});
+
 test('landing offers the built Android test package with its checksum', async ({ page }) => {
   await page.goto('/');
   const download = page.getByRole('link', { name: 'Download Android test build' });
-  await expect(download).toHaveAttribute('href', '/downloads/health-data-bridge-debug-v1.0.4.apk');
+  await expect(download).toHaveAttribute('href', '/downloads/health-data-bridge-debug-v1.0.5.apk');
   await expect(page.locator('.android-download code')).toHaveText(/^[a-f0-9]{64}$/);
 });
 
@@ -184,7 +281,7 @@ test('a changed published shell installs a new worker and replaces the old shell
     readFile('dist/sw.js', 'utf8')
   ]);
   const version = worker.match(/const VERSION = '([^']+)'/i)?.[1];
-  expect(version).toMatch(/^hdb-v1\.0\.4-[a-f0-9]{16}$/);
+  expect(version).toMatch(/^hdb-v1\.0\.5-[a-f0-9]{16}$/);
   if (!version) throw new Error('The production worker needs a concrete cache version.');
   const oldVersion = `${version}-previous`;
   let servedWorker = worker.replace(version!, oldVersion);

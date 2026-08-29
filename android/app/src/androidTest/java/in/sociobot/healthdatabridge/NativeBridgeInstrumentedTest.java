@@ -1,6 +1,7 @@
 package in.sociobot.healthdatabridge;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -17,8 +18,13 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class NativeBridgeInstrumentedTest {
     @Test
-    public void appRegistersALaunchableNativeActivityAndCanCheckHealthConnect() {
+    public void appRegistersTheConfiguredPackageAndCanCheckHealthConnect() {
         Context context = ApplicationProvider.getApplicationContext();
+        assertEquals(
+            "The test must exercise the Health Data Bridge package, not Capacitor's template package",
+            "in.sociobot.healthdatabridge",
+            context.getPackageName()
+        );
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         assertNotNull("The Capacitor activity must be installed", launch);
 

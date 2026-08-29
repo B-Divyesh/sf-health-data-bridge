@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Required on Android 11–13 so the Health Connect provider can be
+         discovered before the bridge asks for its narrow read permissions. -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

@@ -2,7 +2,7 @@
 
 Map Health Connect activity and weight records to a private local log.
 
-Health Data Bridge is for Android fitness and nutrition loggers. It reads narrow Health Connect scopes, previews each field map, and writes an import receipt. Record IDs make a second import write zero duplicates. Records and receipts use device-bound encryption.
+Health Data Bridge is for Android fitness and nutrition loggers. It reads narrow Health Connect scopes, lets you choose a date range and preview each field map, and writes an import receipt. Record IDs make a second import write zero duplicates. Records and receipts use device-bound encryption.
 
 The web build also opens Health Connect JSON or CSV exports. It exports the local log as CSV. JSON exports include records and receipts. The installed PWA works offline after the first visit.
 
@@ -32,6 +32,12 @@ npm run cap:sync
 cd android
 ./gradlew assembleDebug
 ```
+
+To publish a fresh debug APK from the current source, run `npm run android:publish`.
+That command builds a native-only Capacitor bundle, verifies it does not package
+the public APK download, copies the new artifact to `public/downloads/`, and
+stamps the landing page with its SHA-256. The deployed static output remains
+`dist/`; `dist-native/` is a temporary Android-only build input.
 
 ## File formats
 

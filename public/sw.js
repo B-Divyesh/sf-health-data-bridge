@@ -1,4 +1,7 @@
-const VERSION = 'hdb-v1.0.3';
+// The production build replaces this marker with a digest of its final HTML
+// shell. Every shipped shell therefore creates a different worker script and
+// cache namespace, so old clients receive the update without clearing data.
+const VERSION = '__HDB_CACHE_VERSION__';
 const SHELL = ['/', '/demo', '/bridge', '/privacy', '/terms', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/assets/topographic-bridge-720.webp', '/assets/topographic-bridge-1280.webp'];
 
 self.addEventListener('install', event => {

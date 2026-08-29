@@ -7,6 +7,20 @@
     "sandbox": "fresh browser context at /demo; import the 12 sample records twice"
   },
   {
+    "id": "batch-duplicate-safe",
+    "claim": "Repeated IDs in one import are written once.",
+    "where": "bridge receipt",
+    "test": "npm test -- --grep @claim:batch-duplicate-safe",
+    "sandbox": "fresh browser context at /bridge; open a two-record JSON export with the same ID and inspect its receipt and JSON export"
+  },
+  {
+    "id": "date-range-map",
+    "claim": "Choose dates to preview only matching records.",
+    "where": "landing route section, bridge range station, README",
+    "test": "npm test -- --grep @claim:date-range-map",
+    "sandbox": "fresh browser context at /demo; select a two-day range, inspect the matched count, then reverse the range and inspect the announced recovery"
+  },
+  {
     "id": "csv-export",
     "claim": "Exports the local log as CSV.",
     "where": "bridge export toolbar, README",

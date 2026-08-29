@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
 async function importSample(page: import('@playwright/test').Page) {
@@ -11,14 +11,22 @@ async function importSample(page: import('@playwright/test').Page) {
 
 type EncryptedPayload = { iv: number[]; data: number[] };
 
-test('claim manifest maps every visitor claim to one tagged regression test', async () => {
-  const [rawClaims, source] = await Promise.all([
+test('claim manifest maps every and only visitor claim to one exact tagged regression test', async () => {
+  const [rawClaims, testFiles] = await Promise.all([
     readFile('.factory/claims.json', 'utf8'),
-    readFile('tests/claims.spec.ts', 'utf8')
+    readdir('tests')
   ]);
-  const claims = JSON.parse(rawClaims) as Array<{ id: string }>;
-  for (const { id } of claims) {
+  const source = (await Promise.all(testFiles
+    .filter(file => file.endsWith('.spec.ts'))
+    .map(file => readFile(`tests/${file}`, 'utf8')))).join('\n');
+  const claims = JSON.parse(rawClaims) as Array<{ id: string; test: string }>;
+  const taggedIds = [...source.matchAll(/@claim:([a-z0-9-]+)/g)].map(match => match[1]);
+  expect(new Set(claims.map(claim => claim.id)).size).toBe(claims.length);
+  expect(new Set(taggedIds).size).toBe(taggedIds.length);
+  expect(taggedIds.slice().sort()).toEqual(claims.map(claim => claim.id).sort());
+  for (const { id, test: command } of claims) {
     expect(source.match(new RegExp(`@claim:${id.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}`, 'g')) || [], id).toHaveLength(1);
+    expect(command).toBe(`npm test -- --grep @claim:${id}`);
   }
 });
 
@@ -87,6 +95,21 @@ test('@claim:batch-duplicate-safe repeated IDs in one input are written once', a
   const data = JSON.parse(text);
   expect(data.records).toHaveLength(1);
   expect(data.records[0]).toMatchObject({ id: 'same-id', value: 100 });
+});
+
+test('@claim:date-range-map filters records and explains a reversed range', async ({ page }) => {
+  await page.goto('/demo');
+  await page.locator('[data-from]').fill('2026-08-24');
+  await page.locator('[data-from]').dispatchEvent('change');
+  await page.locator('[data-to]').fill('2026-08-25');
+  await page.locator('[data-to]').dispatchEvent('change');
+  await expect(page.getByText('5 records', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Preview 5 records' })).toBeEnabled();
+
+  await page.locator('[data-from]').fill('2026-08-27');
+  await page.locator('[data-from]').dispatchEvent('change');
+  await expect(page.getByRole('alert')).toContainText('Choose an end date that is on or after the start date.');
+  await expect(page.getByRole('button', { name: 'Preview 0 records' })).toBeDisabled();
 });
 
 test('@claim:csv-export exports every local record', async ({ page }) => {
@@ -220,21 +243,28 @@ test('@claim:narrow-health-permissions declares only four health reads', async (
   const healthPermissions = [...manifest.matchAll(/android\.permission\.health\.([A-Z_]+)/g)].map(match => match[1]);
   expect(healthPermissions).toEqual(['READ_STEPS', 'READ_ACTIVE_CALORIES_BURNED', 'READ_EXERCISE', 'READ_WEIGHT']);
   expect(manifest).not.toContain('WRITE_');
+  expect(manifest).toContain('<package android:name="com.google.android.apps.healthdata" />');
 });
 
 test('@claim:android-native-package ships the registered Health Connect bridge', async () => {
-  const [activity, plugin, apk] = await Promise.all([
+  const [activity, plugin, paging, instrumentation, excludeScript, apk] = await Promise.all([
     readFile('android/app/src/main/java/in/sociobot/healthdatabridge/MainActivity.java', 'utf8'),
     readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectBridgePlugin.kt', 'utf8'),
-    readFile('public/downloads/health-data-bridge-debug-v1.0.3.apk')
+    readFile('android/app/src/main/java/in/sociobot/healthdatabridge/HealthConnectPaging.kt', 'utf8'),
+    readFile('android/app/src/androidTest/java/in/sociobot/healthdatabridge/NativeBridgeInstrumentedTest.java', 'utf8'),
+    readFile('scripts/exclude-android-download.mjs', 'utf8'),
+    readFile('public/downloads/health-data-bridge-debug-v1.0.4.apk')
   ]);
   expect(activity).toContain('registerPlugin(HealthConnectBridgePlugin.class)');
   expect(plugin).toContain('@CapacitorPlugin(name = "HealthConnectBridge")');
   expect(plugin).toContain('fun availability');
   expect(plugin).toContain('fun requestPermissions');
   expect(plugin).toContain('fun readRecords');
-  expect(plugin).toContain('while (pageToken != null)');
+  expect(plugin).toContain('collectHealthConnectPages');
   expect(plugin).toContain('pageSize = 1_000');
+  expect(paging).toContain('seenTokens');
+  expect(instrumentation).toContain('in.sociobot.healthdatabridge');
+  expect(excludeScript).toContain('health-data-bridge-debug');
   expect(apk.subarray(0, 2).toString()).toBe('PK');
   expect(apk.length).toBeGreaterThan(1_000_000);
 });

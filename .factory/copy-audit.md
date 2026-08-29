@@ -1,6 +1,6 @@
 # Landing copy audit
 
-Audited 2026-08-28. Headings, labels, and buttons are fragments and do not need sentence counts. No sentence exceeds 22 words. No banned term appears.
+Audited 2026-08-29. Headings, labels, and buttons are fragments and do not need sentence counts. No sentence exceeds 22 words. No banned term appears.
 
 | Sentence | Words | Result |
 | --- | ---: | --- |
@@ -20,7 +20,8 @@ Audited 2026-08-28. Headings, labels, and buttons are fragments and do not need 
 | No calorie targets or medical advice. | 6 | Pass |
 | No provider sharing. | 3 | Pass |
 | No Apple Health support in this version. | 7 | Pass |
-| Bridge Plus saves your field names for repeated exports. | 9 | Pass |
+| New purchases are paused. | 4 | Pass |
+| Existing licenses still enable saved field names. | 7 | Pass |
 | Import, receipts, CSV, and JSON remain free. | 7 | Pass |
 
 ## First-screen read-aloud check

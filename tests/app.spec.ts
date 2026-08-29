@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { resolve, extname } from 'node:path';
+import { once } from 'node:events';
 
 test('landing page states the job and has one primary path', async ({ page }) => {
   await page.goto('/');
@@ -140,7 +143,7 @@ test('new sales are not linked while the external checkout is unavailable', asyn
 test('landing offers the built Android test package with its checksum', async ({ page }) => {
   await page.goto('/');
   const download = page.getByRole('link', { name: 'Download Android test build' });
-  await expect(download).toHaveAttribute('href', '/downloads/health-data-bridge-debug-v1.0.3.apk');
+  await expect(download).toHaveAttribute('href', '/downloads/health-data-bridge-debug-v1.0.4.apk');
   await expect(page.locator('.android-download code')).toHaveText(/^[a-f0-9]{64}$/);
 });
 
@@ -159,12 +162,79 @@ test('SPA navigation starts at the heading and browser back restores scroll', as
 test('390px layout has 44px targets and reflows at 200 percent text', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/demo');
-  for (const element of await page.locator('button:visible, a:visible, input:visible, summary:visible').all()) {
+  // The checkbox inputs are deliberately visually hidden; their 48px labels
+  // are the accessible touch targets. Date and text inputs are their own
+  // targets, and the footer links must be at least 44px in both dimensions.
+  for (const element of await page.locator('button:visible, a:visible, input:not([type=checkbox]):visible, summary:visible, .check-grid label:visible').all()) {
     const box = await element.boundingBox();
     expect(box?.height || 0, await element.textContent() || await element.getAttribute('aria-label') || 'control').toBeGreaterThanOrEqual(44);
   }
+  for (const element of await page.getByRole('contentinfo').getByRole('link').all()) {
+    const box = await element.boundingBox();
+    expect(box?.width || 0, await element.textContent() || 'footer control').toBeGreaterThanOrEqual(44);
+    expect(box?.height || 0, await element.textContent() || 'footer control').toBeGreaterThanOrEqual(44);
+  }
   await page.addStyleTag({ content: 'html { font-size: 32px !important; }' });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
+
+test('a changed published shell installs a new worker and replaces the old shell cache', async ({ browser }) => {
+  const [html, worker] = await Promise.all([
+    readFile('dist/index.html', 'utf8'),
+    readFile('dist/sw.js', 'utf8')
+  ]);
+  const version = worker.match(/const VERSION = '([^']+)'/i)?.[1];
+  expect(version).toMatch(/^hdb-v1\.0\.4-[a-f0-9]{16}$/);
+  if (!version) throw new Error('The production worker needs a concrete cache version.');
+  const oldVersion = `${version}-previous`;
+  let servedWorker = worker.replace(version!, oldVersion);
+  const distRoot = resolve('dist');
+  const mime = new Map([
+    ['.html', 'text/html; charset=utf-8'], ['.js', 'text/javascript; charset=utf-8'], ['.css', 'text/css; charset=utf-8'],
+    ['.webp', 'image/webp'], ['.png', 'image/png'], ['.svg', 'image/svg+xml'], ['.webmanifest', 'application/manifest+json']
+  ]);
+  const server = createServer(async (request, response) => {
+    const pathname = new URL(request.url || '/', 'http://127.0.0.1').pathname;
+    if (pathname === '/sw.js') {
+      response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
+      response.end(servedWorker);
+      return;
+    }
+    const route = pathname === '/' || ['/demo', '/bridge', '/privacy', '/terms'].includes(pathname) ? '/index.html' : pathname;
+    const candidate = resolve(distRoot, `.${route}`);
+    if (!candidate.startsWith(`${distRoot}/`)) {
+      response.writeHead(404).end();
+      return;
+    }
+    try {
+      const body = route === '/index.html' ? html : await readFile(candidate);
+      response.writeHead(200, { 'Content-Type': mime.get(extname(candidate)) || 'application/octet-stream', 'Cache-Control': 'no-store' });
+      response.end(body);
+    } catch {
+      response.writeHead(404).end();
+    }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Expected a local HTTP port for service worker test.');
+  const origin = `http://127.0.0.1:${address.port}`;
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    await page.goto(`${origin}/demo`);
+    await page.waitForFunction(async expected => (await caches.keys()).includes(expected), oldVersion);
+
+    servedWorker = worker;
+    await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
+    await page.waitForFunction(async ({ oldCache, newCache }) => {
+      const keys = await caches.keys();
+      return keys.includes(newCache) && !keys.includes(oldCache);
+    }, { oldCache: oldVersion, newCache: version });
+  } finally {
+    await context.close();
+    await new Promise<void>(resolveServer => server.close(() => resolveServer()));
+  }
 });
 
 test('static response policy preserves SPA routes, 404s, and immutable assets', async () => {

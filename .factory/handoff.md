@@ -15,10 +15,20 @@ This repair resolves the release-blocking claims-inventory findings recorded in
 - Added a manifest-meta regression that fails if any claim lacks exactly one
   `@claim:<id>` test tag.
 - Built and shipped a fresh debug APK at
-  `/downloads/health-data-bridge-debug-v1.0.3.apk` (18,565,836 bytes;
-  SHA-256 `c24a465aac84c98a070d5ebee3e40c287c983f9d1efa35d85ac5049588d40acd`).
+  `/downloads/health-data-bridge-debug-v1.0.3.apk` (6,436,507 bytes;
+  SHA-256 `def44bb7fcc9d366044a6ecebc9f0a44e34409291caa2ccf76360f7a31a71abe`).
   The landing page displays this exact digest and the download regression
   verifies it in both browser projects.
+- Corrected the native Health Connect reader to follow every `pageToken`, so a
+  one-month import includes records beyond the first 1,000-record page. The
+  Android package regression asserts that pagination remains present.
+- Added a compile-ready Android instrumentation test and fixed duplicate
+  legacy Kotlin test artifacts in the aggregate Android test configuration.
+  `assembleDebugAndroidTest` now succeeds alongside the JVM/native build.
+- Kept the browser-only APK out of Capacitor's copied web assets. This prevents
+  each new APK from recursively packaging the previous APK. The landing page
+  hides the download/checksum from the installed Android app, where it would
+  otherwise describe the package that contains it.
 - Bumped the web/PWA cache and build identity to v1.0.3. Existing import,
   privacy, encryption, offline, accessibility, and paid-license behavior was
   retained.
@@ -31,10 +41,7 @@ Executed on 2026-08-29:
 npm ci
 npm run build
 npm test
-npm run cap:sync
-cd android
-ANDROID_HOME=/tmp/hdb-android-sdk ANDROID_SDK_ROOT=/tmp/hdb-android-sdk \
-  JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew --no-daemon assembleDebug test
+npm run android:build
 /opt/fleet/lib/verify-url.sh http://127.0.0.1:4174 /tmp/health-data-bridge-verify
 ```
 
@@ -50,9 +57,11 @@ ANDROID_HOME=/tmp/hdb-android-sdk ANDROID_SDK_ROOT=/tmp/hdb-android-sdk \
 - Every exact command in `.factory/claims.json` was subsequently executed
   individually and passed in both browser projects. There are 19 declared
   claims, each with one tag enforced by test.
-- `npm run cap:sync`: passed. Android build and JVM unit suite passed with
-  API 36 build tools and JDK 21 (`BUILD SUCCESSFUL`, 150 tasks).
-- Local `verify-url.sh`: HTTP 200, 574 ms load, correct title and `lang=en`,
+- `npm run android:build`: passed with Android SDK API 36 and JDK 21
+  (`BUILD SUCCESSFUL`, 204 tasks). It runs Capacitor sync, excludes the
+  downloaded APK from native web assets, builds the debug APK, runs JVM tests,
+  and assembles the Android instrumentation-test APK.
+- Local `verify-url.sh`: HTTP 200, 561 ms load, correct title and `lang=en`,
   one h1/main, no missing alt text or unlabeled buttons, and no console errors.
 
 ## Deployment evidence
@@ -67,24 +76,26 @@ Static deployment completed on 2026-08-29 to
 - The live 390 px demo imported 12 new records and then 0 new / 12 skipped on
   the repeat import; keyboard skip-link operation and zero horizontal overflow
   also passed.
-- Exact SHA-256 matches were confirmed for live `index.html`, hashed JS and
-  CSS, and the APK. Live APK digest:
-  `c24a465aac84c98a070d5ebee3e40c287c983f9d1efa35d85ac5049588d40acd`.
+- This deployment evidence applies to the prior published v1.0.3 artifact.
+  The repaired pagination/package artifact is pushed after this handoff update;
+  the final live verification and digest are recorded below once the static
+  deployment serves this commit.
 - Live hashed JS uses `Cache-Control: public, max-age=31536000, immutable`.
   An unknown route returns HTTP 404. CSP, HSTS, `Referrer-Policy`,
   `X-Content-Type-Options`, and `Permissions-Policy` are present.
 
 ## Android runtime evidence
 
-The native project, registration, four read-only Health Connect scopes, and
-fresh debug APK were built and tested. A true Health Connect provider
-permission/read/export/repeat-import run could not be executed in this
-container: it had no Android device and the downloaded x86_64 API 35 emulator
-required 7.37 GB for userdata while only 2.2 GB remained after installing the
-SDK/image. This is an environment constraint, not substituted with a claim of
-device proof. Before release signing, run the v1.0.3 APK on a device or an
-emulator with Health Connect and retain evidence for grant, denial/unavailable
-recovery, one-month read, export, and repeat import.
+The native project, registration, four read-only Health Connect scopes, fresh
+debug APK, JVM tests, and instrumentation-test APK were built and tested. A
+true Health Connect provider permission/read/export/repeat-import run could
+not be executed in this container: it had no Android device and the downloaded
+x86_64 API 35 emulator required 7.37 GB for userdata while only 2.2 GB remained
+after installing the SDK/image. This is an environment constraint, not
+substituted with a claim of device proof. Before release signing, run the
+v1.0.3 APK on a device or an emulator with Health Connect and retain evidence
+for grant, denial/unavailable recovery, one-month read (including more than one
+page), export, and repeat import.
 
 ## How to run
 

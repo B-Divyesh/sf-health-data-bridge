@@ -233,6 +233,8 @@ test('@claim:android-native-package ships the registered Health Connect bridge',
   expect(plugin).toContain('fun availability');
   expect(plugin).toContain('fun requestPermissions');
   expect(plugin).toContain('fun readRecords');
+  expect(plugin).toContain('while (pageToken != null)');
+  expect(plugin).toContain('pageSize = 1_000');
   expect(apk.subarray(0, 2).toString()).toBe('PK');
   expect(apk.length).toBeGreaterThan(1_000_000);
 });

@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:4174",
+  "loadMs": 600,
+  "errors": [],
+  "a11y": {
+    "title": "Health Data Bridge — map health records locally",
+    "lang": "en",
+    "h1": 1,
+    "main": true,
+    "imgsMissingAlt": 0,
+    "buttonsUnlabeled": 0,
+    "textLength": 1686
+  }
+}

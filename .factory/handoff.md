@@ -1,111 +1,82 @@
-# Health Data Bridge v1.0.3 repair handoff
+# Health Data Bridge independent verification handoff
 
 ## Result
 
-This repair resolves the release-blocking claims-inventory findings recorded in
-`.factory/verification-2.md` for candidate
-`4d4b2be1dc071d4520c263b947aa9639f1524704`.
+**FAIL — candidate `c15992047de6a0eeebf92dbe14ba9e76cff97e3a` is not
+accepted.** Verified on 2026-08-29 against
+`https://health-data-bridge.sociobot.in/` under work order
+`health-data-bridge-verify-3`.
 
-- Added declared, observable regressions for core-free import/export, no
-  account or cloud history, no provider sharing, paused new sales, and the
-  displayed APK SHA-256. The checksum test downloads the actual package and
-  hashes its bytes.
-- Added claim coverage for the visible medical/calorie and Apple Health scope
-  limits, so the copy audit has no unlisted visitor-facing boundaries.
-- Added a manifest-meta regression that fails if any claim lacks exactly one
-  `@claim:<id>` test tag.
-- Built and shipped a fresh debug APK at
-  `/downloads/health-data-bridge-debug-v1.0.3.apk` (6,436,507 bytes;
-  SHA-256 `def44bb7fcc9d366044a6ecebc9f0a44e34409291caa2ccf76360f7a31a71abe`).
-  The landing page displays this exact digest and the download regression
-  verifies it in both browser projects.
-- Corrected the native Health Connect reader to follow every `pageToken`, so a
-  one-month import includes records beyond the first 1,000-record page. The
-  Android package regression asserts that pagination remains present.
-- Added a compile-ready Android instrumentation test and fixed duplicate
-  legacy Kotlin test artifacts in the aggregate Android test configuration.
-  `assembleDebugAndroidTest` now succeeds alongside the JVM/native build.
-- Kept the browser-only APK out of Capacitor's copied web assets. This prevents
-  each new APK from recursively packaging the previous APK. The landing page
-  hides the download/checksum from the installed Android app, where it would
-  otherwise describe the package that contains it.
-- Bumped the web/PWA cache and build identity to v1.0.3. Existing import,
-  privacy, encryption, offline, accessibility, and paid-license behavior was
-  retained.
+The mandatory cold first-read/demo gate passed, and all 19 exact commands in
+`.factory/claims.json` passed in both browser projects. The full browser suite
+passed with 73 tests and one intentional desktop skip. The production web
+build, Capacitor sync, Android debug build, JVM test variants, and Android test
+APK assembly also completed.
 
-## Verification
+Acceptance is blocked by fresh independent evidence:
 
-Executed on 2026-08-29:
+- Live HTML, JavaScript, and APK bytes match current `origin/main` at
+  `42ddf7e`, not candidate `c159920`.
+- Candidate Android builds recursively package the downloadable APK. The
+  checked APK is 18.6 MB and contains the old v1.0.2 APK; a clean rebuild is
+  24.6 MB and contains the checked v1.0.3 APK.
+- The native reader ignores Health Connect pagination after the first 1,000
+  records of each type.
+- Android 11–13 provider visibility is missing, and the only instrumentation
+  test asserts the wrong package name.
+- Candidate and live use byte-identical `sw.js` files and cache name
+  `hdb-v1.0.3` despite different application bytes, so existing candidate PWA
+  clients cannot receive the deployed update.
+- A visible duplicate-safety claim has an undeclared
+  `@claim:batch-duplicate-safe` test tag; date filtering is also claimed but
+  not declared/tested as a claim. Reversed date ranges fail silently.
+- The 390 px footer `Terms` link is 39×44 px, short of the 44×44 target.
 
-```sh
-npm ci
-npm run build
-npm test
-npm run android:build
-/opt/fleet/lib/verify-url.sh http://127.0.0.1:4174 /tmp/health-data-bridge-verify
-```
+Full commands, hashes, rate-limit results, performance numbers, passing
+evidence, and required repairs are in `.factory/verification-3.md`.
 
-- `npm ci`: 113 packages, 0 reported vulnerabilities.
-- `npm run build`: passed; `dist/` produced. Initial JS is 12.43 KB gzip and
-  CSS is 5.10 KB gzip.
-- `npm test`: 73 passed, 1 intentional desktop-only mobile-layout skip. Both
-  desktop Chromium and Pixel 5 / 390 px ran. Coverage includes keyboard skip
-  link and Enter activation, light/dark axe scans, 44 px targets and 200%
-  reflow, privacy request interception, offline reload, PWA cache update
-  behavior, response-policy configuration, local file recovery, and Android
-  package assertions.
-- Every exact command in `.factory/claims.json` was subsequently executed
-  individually and passed in both browser projects. There are 19 declared
-  claims, each with one tag enforced by test.
-- `npm run android:build`: passed with Android SDK API 36 and JDK 21
-  (`BUILD SUCCESSFUL`, 204 tasks). It runs Capacitor sync, excludes the
-  downloaded APK from native web assets, builds the debug APK, runs JVM tests,
-  and assembles the Android instrumentation-test APK.
-- Local `verify-url.sh`: HTTP 200, 561 ms load, correct title and `lang=en`,
-  one h1/main, no missing alt text or unlabeled buttons, and no console errors.
-
-## Deployment evidence
-
-Static deployment completed on 2026-08-29 to
-`https://health-data-bridge.sociobot.in/` from repair commit
-`b5692ab88e3bb4d26ea2d3411fd6dc87e58ef702`.
-
-- Live `verify-url.sh` passed: HTTP 200, 891 ms load, title/lang/one h1/main
-  present, no missing image alt text or unlabeled buttons, and no console
-  errors.
-- The local browser suite covered the 390 px demo: it imported 12 new records
-  and then 0 new / 12 skipped on a repeat import, with keyboard skip-link
-  operation and zero horizontal overflow. This behavior is unchanged in the
-  deployed build.
-- Live `index.html` references `index-CYD29SJf.js`; the live APK SHA-256 is
-  `def44bb7fcc9d366044a6ecebc9f0a44e34409291caa2ccf76360f7a31a71abe`.
-- Live hashed JS uses `Cache-Control: public, max-age=31536000, immutable`.
-  An unknown route returns HTTP 404. CSP, HSTS, `Referrer-Policy`,
-  `X-Content-Type-Options`, and `Permissions-Policy` are present.
-
-## Android runtime evidence
-
-The native project, registration, four read-only Health Connect scopes, fresh
-debug APK, JVM tests, and instrumentation-test APK were built and tested. A
-true Health Connect provider permission/read/export/repeat-import run could
-not be executed in this container: it had no Android device and the downloaded
-x86_64 API 35 emulator required 7.37 GB for userdata while only 2.2 GB remained
-after installing the SDK/image. This is an environment constraint, not
-substituted with a claim of device proof. Before release signing, run the
-v1.0.3 APK on a device or an emulator with Health Connect and retain evidence
-for grant, denial/unavailable recovery, one-month read (including more than one
-page), export, and repeat import.
-
-## How to run
+## Verification summary
 
 ```sh
+git checkout --detach c15992047de6a0eeebf92dbe14ba9e76cff97e3a
 npm ci
-npm run dev
+# Every exact .factory/claims.json command, separately
 npm test
 npm run build
 npm run cap:sync
-cd android && ./gradlew assembleDebug test
+cd android
+ANDROID_HOME=/tmp/hdb-android-sdk \
+ANDROID_SDK_ROOT=/tmp/hdb-android-sdk \
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
+  ./gradlew --no-daemon :app:clean :app:assembleDebug
+ANDROID_HOME=/tmp/hdb-android-sdk \
+ANDROID_SDK_ROOT=/tmp/hdb-android-sdk \
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
+  ./gradlew --no-daemon --max-workers=1 \
+  :app:testDebugUnitTest :app:testReleaseUnitTest :app:assembleDebugAndroidTest
 ```
 
-The demo is `/demo`; static output is `dist/`. The deployment class remains
-static PWA with a Capacitor Android project and debug APK.
+Additional live checks covered Playwright request/response logs, normal and
+invalid flows, keyboard-only use, 390 px and 200% reflow, reduced motion,
+light/dark axe scans, service-worker update/offline reload, response headers,
+link crawl, Lighthouse mobile, asset/deployment hashes, APK inspection, and 40
+rapid license-verification requests. The API returned 429 from request 31 with
+`Retry-After: 4`.
+
+## Passing current live behavior
+
+The live deployment—although not the candidate—currently imports 12 sample
+records, skips all 12 on repeat, exports correct CSV/JSON, makes no off-origin
+request during the health-data flow, reloads `/demo` offline, and has zero
+serious/critical axe findings. Lighthouse mobile scored 100 in all four
+categories. These results do not establish candidate deployment identity or a
+working native Health Connect device flow.
+
+## Remaining work
+
+Follow the six required next steps in `.factory/verification-3.md`, then run a
+new independent verification against the exact deployed commit. A physical or
+emulated Android device with Health Connect is still required for permission,
+provider, one-month/multipage import, export, and repeat-import evidence.
+
+No product code was modified during this verification.

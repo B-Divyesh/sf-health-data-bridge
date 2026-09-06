@@ -1,47 +1,38 @@
-# Health Data Bridge — independent verification handoff
+# Health Data Bridge — verification handoff
 
 ## Result
 
-**FAIL — do not accept or release candidate
-`cd13ad7cee7c6a9b59559f1c84e2bf2d633eeedc`.**
+**FAIL — do not accept the live product.**
 
-Full evidence is in `.factory/verification-4.md`. The deployment-only failure
-reported earlier is resolved: fresh web build output and the live HTML,
-JavaScript, CSS, service worker, and checked-in APK match byte-for-byte.
+The implementation reviewed is `c279bbc25ed4df3867aa623f2f8f69c424495046`.
+The live site is still the prior v1.0.4 artifact, so it does not contain this
+candidate's local-date, Android-test, or Twitter-metadata changes. The live
+date filter still drops a valid record at a local midnight boundary. The core
+installed Android Health Connect path has not been run on a device/emulator.
 
-The remaining release blockers are:
-
-1. Local date filtering uses the UTC prefix of a Health Connect instant.
-   Live tests in `America/Los_Angeles` and `Asia/Kolkata` showed valid records
-   near midnight disappear when their actual local day is selected.
-2. The compiled Android instrumentation APK still contains
-   `ExampleInstrumentedTest`, which asserts the obsolete
-   `com.getcapacitor.app` package even though the test targets
-   `in.sociobot.healthdatabridge`. It must fail when executed on-device.
-3. No Android device/emulator was available to prove the real Health Connect
-   permission/read/export/repeat-import job end to end.
-
-Additional gaps: fresh-build APK byte verification fails because debug signing
-uses an ephemeral key (all 463 payload entries are identical); new one-time
-purchases remain unavailable; and Twitter title/description/image metadata are
-missing.
+There are seven findings and zero untested registered claims. See
+`.factory/verification-5.md` for fresh evidence, prior-finding disposition,
+and required next steps.
 
 ## What passed
 
-- Required first screen and one-click sample demo.
-- All 21 exact claim commands; combined claim run: 42/42 passed.
-- `npm test`: 77 passed, one intentional desktop skip.
-- `npm run build`: TypeScript and production build passed; `dist/` produced.
-- Fresh native app assembly; debug/release paging unit tests; instrumentation
-  APK assembly; Android lint.
-- Live normal, duplicate, export, persistence, invalid-input, recovery,
-  keyboard, offline, accessibility, privacy, headers, and rate-limit checks.
-- Zero serious/critical axe findings across five routes, both viewports, and
-  light/dark modes.
-- Lighthouse mobile: 92 performance, 100 accessibility, 100 best practices,
-  100 SEO; LCP 1.725 s and CLS 0.
-- License API allowance: 30 requests per client/window; request 31 returned 429
-  with `Retry-After: 2`.
+- Fresh desktop and phone first-read checks; the sample demo is one click.
+- Demo loads 12 records, shows a persistent sample label, produces a 12-new/
+  0-repeat receipt, resets, and leaves a real ledger unchanged.
+- All 21 exact claim commands passed; combined claim run passed 42 tests.
+- `npm test` passed: 79 passed, 1 intentional skip.
+- `npm run build` passed and produced `dist/`.
+- Clean native build, Android JVM tests, Android test APK assembly, lint, and
+  `android:verify --native` passed with JDK 21/API 36/build-tools 35.
+- Live offline demo reload, internal links, legal pages, headers, 404 design,
+  keyboard route focus, and axe scans passed.
+
+## Known gaps
+
+- `npm run android:verify -- --published` fails after a fresh native build.
+- New one-time Bridge Plus purchases are paused.
+- The live deployment does not match `c279bbc`.
+- No Health-Connect-capable Android device/emulator was available.
 
 ## Reproduce
 
@@ -50,17 +41,15 @@ npm ci
 npm test -- --grep '@claim:'
 npm test
 npm run build
+npm run cap:sync
 ```
 
-Android verification requires JDK 21 plus Android platform 36/build-tools 35:
+With JDK 21 and Android platform 36/build-tools 35:
 
 ```sh
-npm run cap:sync
 cd android
-./gradlew :app:assembleDebug test :app:assembleDebugAndroidTest
-./gradlew :app:lintDebug
+./gradlew --no-daemon --max-workers=1 \
+  :app:assembleDebug test :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
-Then run `connectedDebugAndroidTest` on a Health Connect-capable target after
-correcting the stale template test. Demo URL:
-`https://health-data-bridge.sociobot.in/demo`.
+Demo: `https://health-data-bridge.sociobot.in/demo`.
